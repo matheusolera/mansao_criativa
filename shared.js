@@ -112,6 +112,46 @@ function toInputDate(d) {
 }
 function fmtMoney(v) { return Number(v || 0).toFixed(2).replace('.', ','); }
 
+// ── MÊS CONTÁBIL ──
+// Regra: o mês de referência X/AAAA cobre o período do dia 5/X até dia 4 do mês X+1.
+// Ex: Junho/2026 = 05/06/2026 a 04/07/2026.
+const DIA_FECHAMENTO = 5;
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+// Recebe "yyyy-mm" (do input month) e devolve { inicio, fim } como "yyyy-mm-dd"
+function fiscalRange(mesInput) {
+  const [y, m] = mesInput.split('-').map(Number);
+  const inicio = `${y}-${pad2(m)}-${pad2(DIA_FECHAMENTO)}`;
+  // dia 4 do mês seguinte
+  const nextY = m === 12 ? y + 1 : y;
+  const nextM = m === 12 ? 1 : m + 1;
+  const fim = `${nextY}-${pad2(nextM)}-${pad2(DIA_FECHAMENTO - 1)}`;
+  return { inicio, fim };
+}
+
+// Recebe uma data ("yyyy-mm-dd" ou Date) e devolve o mês contábil ("yyyy-mm") a que ela pertence.
+// Ex: 03/07/2026 ainda pertence a Junho/2026, pois Junho vai até 04/07.
+function fiscalMonthOf(dateInput) {
+  let y, m, d;
+  if (typeof dateInput === 'string') {
+    const parts = dateInput.split('T')[0].split('-');
+    [y, m, d] = parts.map(Number);
+  } else {
+    y = dateInput.getFullYear(); m = dateInput.getMonth() + 1; d = dateInput.getDate();
+  }
+  // Se o dia for menor que o DIA_FECHAMENTO, ainda é o mês anterior
+  if (d < DIA_FECHAMENTO) {
+    if (m === 1) { y--; m = 12; } else { m--; }
+  }
+  return `${y}-${pad2(m)}`;
+}
+
+// Mês contábil atual (em formato "yyyy-mm" para inputs type=month)
+function currentFiscalMonth() {
+  return fiscalMonthOf(new Date());
+}
+
 // ── PAGINATION ──
 function buildPagination(containerId, currentPage, totalItems, pageSize, onGo) {
   const container = document.getElementById(containerId);

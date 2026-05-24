@@ -68,6 +68,7 @@
   <div class="month-bar">
     <label>Mês de referência:</label>
     <input type="month" id="mesRef" onchange="loadParams()"/>
+    <span id="rangeInfo" style="font-size:.82rem;color:var(--text-mid)"></span>
     <span style="font-size:.78rem;color:var(--text-mid)">Os parâmetros são salvos por mês — cada mês pode ter suas próprias taxas.</span>
   </div>
 
@@ -176,15 +177,12 @@ let custosFixos = [], custosVars = [];
 // snapshots para detectar exclusões
 let removedFixos = new Set(), removedVars = new Set();
 
-function mesAtualInput() {
-  const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-}
 function mesParaData(m) { return `${m}-01`; }
 
 async function loadAll() {
   removedFixos.clear(); removedVars.clear();
   if (!document.getElementById('mesRef').value) {
-    document.getElementById('mesRef').value = mesAtualInput();
+    document.getElementById('mesRef').value = currentFiscalMonth();
   }
   loadStart();
   try {
@@ -206,6 +204,8 @@ async function loadParams() {
   const mesRef = document.getElementById('mesRef').value;
   if (!mesRef) return;
   const dataMes = mesParaData(mesRef);
+  const { inicio, fim } = fiscalRange(mesRef);
+  document.getElementById('rangeInfo').textContent = `Período: ${fmtDate(inicio)} a ${fmtDate(fim)}`;
   loadStart();
   try {
     const data = await supa(`parametros_financeiros?mes_referencia=eq.${dataMes}`);
@@ -389,7 +389,7 @@ async function saveAll() {
   loadDone();
 }
 
-document.getElementById('mesRef').value = mesAtualInput();
+document.getElementById('mesRef').value = currentFiscalMonth();
 loadAll();
 </script>
 </body>

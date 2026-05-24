@@ -79,7 +79,7 @@ async function loadReports() {
 
     // Receita por mês
     const byMonth={};
-    pedidos.forEach(p=>{ if(!p.data_pedido)return; const k=p.data_pedido.slice(0,7); byMonth[k]=(byMonth[k]||0)+(p.valor||0); });
+    pedidos.forEach(p=>{ if(!p.data_pedido)return; const k=fiscalMonthOf(p.data_pedido); byMonth[k]=(byMonth[k]||0)+(p.valor||0); });
     const mKeys=Object.keys(byMonth).sort().slice(-8);
     new Chart(document.getElementById('chartMensal'), barCfg(mKeys.map(k=>{const[y,m]=k.split('-');return m+'/'+y.slice(2);}), mKeys.map(k=>byMonth[k])));
 

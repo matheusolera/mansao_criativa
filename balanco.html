@@ -71,6 +71,7 @@
   <div class="month-bar">
     <label>Mês de referência:</label>
     <input type="month" id="mesRef" onchange="loadBalanco()"/>
+    <span id="rangeInfo" style="font-size:.82rem;color:var(--text-mid)"></span>
   </div>
 
   <!-- HERO: Capital disponível -->
@@ -134,24 +135,12 @@
 if (!requireAuth()) throw new Error("redirect");
 renderUserBar();
 
-function mesAtualInput() {
-  const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-}
-
-function mesRangeFiltro(mesInput) {
-  // mesInput = "yyyy-mm"
-  const [y, m] = mesInput.split('-').map(Number);
-  const inicio = `${y}-${String(m).padStart(2,'0')}-01`;
-  const fimMes = new Date(y, m, 0).getDate(); // último dia
-  const fim = `${y}-${String(m).padStart(2,'0')}-${String(fimMes).padStart(2,'0')}`;
-  return { inicio, fim };
-}
-
 async function loadBalanco() {
-  const mes = document.getElementById('mesRef').value || mesAtualInput();
+  const mes = document.getElementById('mesRef').value || currentFiscalMonth();
   document.getElementById('mesRef').value = mes;
-  const { inicio, fim } = mesRangeFiltro(mes);
+  const { inicio, fim } = fiscalRange(mes);
   const dataMes = `${mes}-01`;
+  document.getElementById('rangeInfo').textContent = `Período contábil: ${fmtDate(inicio)} a ${fmtDate(fim)}`;
 
   loadStart();
   try {
@@ -248,7 +237,7 @@ function renderBreakdown(elId, items, totalId, unidade, faturamento) {
   document.getElementById(totalId).textContent = fmtVal(tot);
 }
 
-document.getElementById('mesRef').value = mesAtualInput();
+document.getElementById('mesRef').value = currentFiscalMonth();
 loadBalanco();
 </script>
 </body>
