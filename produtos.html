@@ -35,7 +35,7 @@
   </div>
   <div class="table-container">
     <div class="tbl-header tbl-produtos">
-      <span class="left">ID</span><span class="left">Nome</span><span>Preço Unit.</span><span>Técnica</span><span>Insumo</span><span>Ações</span>
+      <span class="left">ID</span><span class="left">Nome</span><span>Preço Unit.</span><span>Custo</span><span>Técnica</span><span>Insumo</span><span>Ações</span>
     </div>
     <div id="data-list"><div class="empty-state">Carregando produtos…</div></div>
   </div>
@@ -121,6 +121,7 @@ function render() {
       <span class="id-cell">#${r.id_produto}</span>
       <span class="left">${r.nome}</span>
       <span>R$ ${fmtMoney(r.preco_unitario)}</span>
+      <span>R$ ${fmtMoney(r.custo)}</span>
       <span>${r.tecnica || '—'}</span>
       <span>${getInsumoNome(r.id_insumo)}</span>
       <span class="row-actions">
