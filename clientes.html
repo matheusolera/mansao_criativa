@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clientes – Casa Personalizada</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap" rel="stylesheet"/>
+  <style>
+    @font-face {
+      font-family: 'Higuen';
+      src: url('https://fonts.cdnfonts.com/s/15399/HiguenElegantSerifDemo.woff') format('woff');
+      font-weight: 400; font-style: normal;
+    }
+    :root {
+      --sidebar-bg: #C0544E; --sidebar-text: #fff;
+      --bg: #F7F0E8; --card-bg: #EDE0D0; --card-border: #C0877A;
+      --row-bg: #E8D9C8; --row-hover: #DFD0BE; --row-alt: #EDE0D0;
+      --text-dark: #5C2E28; --text-mid: #7A4A40;
+      --accent: #C0544E; --btn-bg: #C0544E; --btn-text: #fff;
+      --font-display: 'Higuen','Playfair Display',Georgia,serif;
+      --font-body: 'Bree Serif',Georgia,serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-body); background: var(--bg); color: var(--text-dark); display: flex; min-height: 100vh; }
+
+    /* SIDEBAR */
+    .sidebar { width: 210px; min-height: 100vh; background: var(--sidebar-bg); display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0; }
+    .logo-svg-wrap { width: 90px; margin: 0 auto 32px; display: flex; justify-content: center; }
+    .sidebar nav a { display: block; padding: 10px 28px; color: var(--sidebar-text); text-decoration: none; font-family: var(--font-body); font-size: .97rem; transition: background .15s; }
+    .sidebar nav a:hover, .sidebar nav a.active { background: rgba(255,255,255,.15); }
+
+    /* LOADING BAR */
+    .loading-bar { height: 3px; background: var(--accent); position: fixed; top: 0; left: 210px; right: 0; z-index: 200; transform-origin: left; transform: scaleX(0); transition: transform .4s ease; }
+    .loading-bar.active { transform: scaleX(.7); }
+    .loading-bar.done   { transform: scaleX(1); transition: transform .2s ease; }
+
+    /* MAIN */
+    .main { flex: 1; padding: 40px 48px; overflow-y: auto; min-width: 0; }
+    h1.page-title { font-family: var(--font-display); font-size: 3.2rem; font-weight: 400; color: var(--text-dark); text-align: center; margin-bottom: 32px; letter-spacing: .03em; }
+
+    /* SEARCH + ACTIONS */
+    .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 360px; }
+    .search-wrap input { width: 100%; background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 50px; padding: 9px 18px 9px 40px; font-family: var(--font-body); font-size: .9rem; color: var(--text-dark); outline: none; transition: border-color .15s; }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+
+    .btn { display: inline-flex; align-items: center; gap: 7px; background: var(--btn-bg); color: var(--btn-text); border: none; border-radius: 50px; padding: 9px 22px; font-family: var(--font-body); font-size: .93rem; cursor: pointer; letter-spacing: .01em; transition: filter .15s, transform .1s; }
+    .btn:hover { filter: brightness(.88); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    /* TABLE */
+    .table-container { background: var(--card-bg); border-radius: 18px; border: 2px solid var(--card-border); overflow: hidden; }
+    .tbl-header { display: grid; grid-template-columns: 60px 1fr 1fr 140px 200px 120px 80px; background: var(--card-bg); border-bottom: 2px solid var(--card-border); padding: 13px 20px; gap: 8px; }
+    .tbl-header span { font-family: var(--font-body); font-size: .78rem; color: var(--text-mid); text-align: center; line-height: 1.3; }
+    .tbl-header span:first-child { text-align: left; }
+
+    .client-row { display: grid; grid-template-columns: 60px 1fr 1fr 140px 200px 120px 80px; align-items: center; padding: 13px 20px; gap: 8px; border-bottom: 1px solid var(--card-border); cursor: pointer; transition: background .14s; user-select: none; }
+    .client-row:last-child { border-bottom: none; }
+    .client-row:nth-child(odd)  { background: var(--row-bg); }
+    .client-row:nth-child(even) { background: var(--row-alt); }
+    .client-row:hover { background: var(--row-hover); }
+    .client-row.selected { outline: 2.5px solid var(--accent); outline-offset: -2px; }
+
+    .client-row span { font-family: var(--font-body); font-size: .88rem; color: var(--text-dark); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .client-row span:first-child { text-align: left; font-size: .8rem; color: var(--text-mid); }
+    .client-row .name-cell { text-align: left; font-size: .92rem; }
+
+    /* ROW ACTIONS */
+    .row-actions { display: flex; gap: 6px; justify-content: center; }
+    .btn-icon { width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: filter .14s, transform .1s; flex-shrink: 0; }
+    .btn-icon:hover { filter: brightness(.88); transform: scale(1.1); }
+    .btn-edit-icon  { background: #fff3cd; }
+    .btn-del-icon   { background: #fde8e8; }
+
+    /* EMPTY / LOADING */
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--text-mid); font-size: .95rem; }
+
+    /* PAGINATION */
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+    .page-btn { background: var(--card-bg); border: 1.5px solid var(--card-border); color: var(--text-dark); border-radius: 8px; padding: 6px 14px; font-family: var(--font-body); font-size: .85rem; cursor: pointer; transition: background .14s; }
+    .page-btn:hover { background: var(--row-hover); }
+    .page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .page-info { font-family: var(--font-body); font-size: .83rem; color: var(--text-mid); }
+
+    /* MODAL */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(92,46,40,.4); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.visible { display: flex; }
+    .modal { background: var(--bg); border-radius: 20px; border: 2px solid var(--card-border); padding: 40px 44px 36px; width: 620px; max-width: 95vw; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 16px 56px rgba(92,46,40,.22); animation: modalIn .22s ease; }
+    @keyframes modalIn { from { opacity:0; transform:translateY(-16px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+    .modal h2 { font-family: var(--font-display); font-size: 1.7rem; color: var(--text-dark); margin-bottom: 26px; letter-spacing: .02em; }
+    .modal-close { position: absolute; top: 18px; right: 18px; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); border: none; color: #fff; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s, transform .15s; box-shadow: 0 2px 8px rgba(192,84,78,.3); }
+    .modal-close:hover { background: #a3433d; transform: rotate(90deg) scale(1.08); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-family: var(--font-body); font-size: .8rem; color: var(--text-mid); }
+    .form-group input, .form-group textarea { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 10px; padding: 10px 14px; font-family: var(--font-body); font-size: .92rem; color: var(--text-dark); outline: none; transition: border-color .15s, box-shadow .15s; resize: vertical; }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192,84,78,.12); }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 26px; }
+    .btn-secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+    .btn-secondary:hover { background: rgba(192,84,78,.08); filter: none; }
+
+    /* CONFIRM */
+    .confirm-modal { background: var(--bg); border-radius: 20px; border: 2px solid var(--card-border); padding: 44px 44px 36px; width: 420px; max-width: 95vw; text-align: center; position: relative; box-shadow: 0 16px 56px rgba(92,46,40,.22); animation: modalIn .22s ease; }
+    .confirm-modal p { font-family: var(--font-body); font-size: .97rem; color: var(--text-dark); margin-bottom: 8px; line-height: 1.6; }
+    .confirm-modal .cliente-nome { font-size: 1.05rem; color: var(--accent); font-weight: 700; margin-bottom: 20px; }
+    .confirm-modal .modal-actions { justify-content: center; }
+    .btn-danger { background: #b71c1c; }
+    .btn-danger:hover { filter: brightness(.88); }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 28px; right: 28px; background: #5C2E28; color: #fff; font-family: var(--font-body); font-size: .9rem; padding: 12px 22px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.2); opacity: 0; transform: translateY(12px); transition: opacity .3s, transform .3s; z-index: 999; pointer-events: none; }
+    .toast.show  { opacity: 1; transform: translateY(0); }
+    .toast.error { background: #b71c1c; }
+  </style>
+</head>
+<body>
+
+<div class="loading-bar" id="loadingBar"></div>
+
+<aside class="sidebar">
+  <div class="logo-svg-wrap">
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+      <path d="M40 10 L70 38 L65 38 L65 68 L15 68 L15 38 L10 38 Z" fill="white" opacity="0.9"/>
+      <path d="M32 68 L32 50 L48 50 L48 68 Z" fill="#C0544E"/>
+      <circle cx="40" cy="34" r="8" fill="#F7F0E8" opacity="0.85"/>
+      <rect x="37" y="41" width="6" height="3" rx="1.5" fill="#F7F0E8" opacity="0.7"/>
+      <line x1="40" y1="20" x2="40" y2="16" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      <line x1="52" y1="24" x2="55" y2="21" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      <line x1="28" y1="24" x2="25" y2="21" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <nav>
+    <a href="relatorios.html">Relatórios</a>
+    <a href="pedidos.html">Pedidos</a>
+    <a href="#">Insumos</a>
+    <a href="#">Produtos</a>
+    <a href="clientes.html" class="active">Clientes</a>
+    <a href="#">Fornecedores</a>
+    <a href="#">Balanço</a>
+  </nav>
+</aside>
+
+<main class="main">
+  <h1 class="page-title">Clientes</h1>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <circle cx="6.5" cy="6.5" r="5" stroke="#7A4A40" stroke-width="1.8"/>
+        <path d="M10.5 10.5L14 14" stroke="#7A4A40" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <input type="text" id="searchInput" placeholder="Buscar por nome, e-mail ou telefone…" oninput="filterClientes()"/>
+    </div>
+    <button class="btn" onclick="openNewModal()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
+      Novo Cliente
+    </button>
+  </div>
+
+  <div class="table-container">
+    <div class="tbl-header">
+      <span>ID</span>
+      <span style="text-align:left">Nome</span>
+      <span>E-mail</span>
+      <span>Telefone</span>
+      <span>Observação</span>
+      <span>Sobrenome</span>
+      <span>Ações</span>
+    </div>
+    <div id="clientes-list"><div class="empty-state">Carregando clientes…</div></div>
+  </div>
+
+  <div class="pagination" id="pagination"></div>
+</main>
+
+<!-- MODAL NOVO/EDITAR -->
+<div class="modal-overlay" id="clienteModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('clienteModal')" title="Fechar">✕</button>
+    <h2 id="modalTitle">Novo Cliente</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nome *</label>
+        <input type="text" id="f-nome" placeholder="Nome"/>
+      </div>
+      <div class="form-group">
+        <label>Sobrenome</label>
+        <input type="text" id="f-sobrenome" placeholder="Sobrenome"/>
+      </div>
+      <div class="form-group">
+        <label>Telefone</label>
+        <input type="text" id="f-telefone" placeholder="(00) 00000-0000"/>
+      </div>
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" id="f-email" placeholder="email@exemplo.com"/>
+      </div>
+      <div class="form-group full">
+        <label>Observação</label>
+        <textarea id="f-observacao" rows="3" placeholder="Observações sobre o cliente…"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('clienteModal')">Cancelar</button>
+      <button class="btn" id="btnSalvar" onclick="saveCliente()">Salvar Cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR EXCLUSÃO -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-modal">
+    <button class="modal-close" onclick="closeModal('confirmModal')" title="Fechar">✕</button>
+    <p>Tem certeza que deseja excluir o cliente</p>
+    <p class="cliente-nome" id="confirmNome"></p>
+    <p style="font-size:.85rem;color:var(--text-mid);margin-bottom:24px;">Esta ação não pode ser desfeita.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancelar</button>
+      <button class="btn btn-danger" id="btnConfirmDelete" onclick="deleteCliente()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://ctueqxlhbtfzvocwohjf.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0dWVxeGxoYnRmenZvY3dvaGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NjQyMTMsImV4cCI6MjA5NTE0MDIxM30.VikphOEMgR4QgDOLQkneZWOC2XdgbFvoXyAn1rsDsec';
+
+const headers = {
+  'apikey': SUPA_KEY,
+  'Authorization': `Bearer ${SUPA_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+};
+
+async function supa(path, options = {}) {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, { headers, ...options });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${res.status}`);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// STATE
+let allClientes  = [];
+let filtered     = [];
+let editingId    = null;
+let deletingId   = null;
+const PAGE_SIZE  = 15;
+let currentPage  = 1;
+
+// LOADING
+function loadStart() { const b = document.getElementById('loadingBar'); b.className = 'loading-bar active'; }
+function loadDone()  { const b = document.getElementById('loadingBar'); b.className = 'loading-bar done'; setTimeout(() => b.className = 'loading-bar', 400); }
+
+// TOAST
+function toast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = 'toast', 3200);
+}
+
+// LOAD
+async function loadClientes() {
+  loadStart();
+  try {
+    const data = await supa('clientes?select=*&order=nome.asc');
+    allClientes = data || [];
+    filtered = [...allClientes];
+    currentPage = 1;
+    render();
+  } catch(e) {
+    toast('Erro ao carregar clientes: ' + e.message, true);
+    document.getElementById('clientes-list').innerHTML =
+      '<div class="empty-state">Não foi possível carregar os clientes.</div>';
+  }
+  loadDone();
+}
+
+// FILTER
+function filterClientes() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  filtered = q
+    ? allClientes.filter(c =>
+        `${c.nome} ${c.sobrenome||''}`.toLowerCase().includes(q) ||
+        (c.email||'').toLowerCase().includes(q) ||
+        (c.telefone||'').includes(q)
+      )
+    : [...allClientes];
+  currentPage = 1;
+  render();
+}
+
+// RENDER
+function render() {
+  const container = document.getElementById('clientes-list');
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state">Nenhum cliente encontrado.</div>';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page  = filtered.slice(start, start + PAGE_SIZE);
+
+  container.innerHTML = page.map(c => `
+    <div class="client-row">
+      <span>#${c.id_cliente}</span>
+      <span class="name-cell">${c.nome} ${c.sobrenome || ''}</span>
+      <span>${c.email || '—'}</span>
+      <span>${c.telefone || '—'}</span>
+      <span title="${c.observacao || ''}">${c.observacao ? c.observacao.substring(0,40) + (c.observacao.length>40?'…':'') : '—'}</span>
+      <span>${c.sobrenome || '—'}</span>
+      <span class="row-actions">
+        <button class="btn-icon btn-edit-icon" onclick="openEditModal(${c.id_cliente})" title="Editar">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5L11.5 4.5L5 11H3v-2L9.5 2.5Z" stroke="#856404" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="btn-icon btn-del-icon" onclick="openConfirmDelete(${c.id_cliente},'${(c.nome+' '+(c.sobrenome||'')).trim().replace(/'/g,"\\'")}'))" title="Excluir">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </span>
+    </div>
+  `).join('');
+
+  // PAGINATION
+  const pg = document.getElementById('pagination');
+  if (totalPages <= 1) { pg.innerHTML = ''; return; }
+
+  let btns = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    if (totalPages > 7 && i > 2 && i < totalPages - 1 && Math.abs(i - currentPage) > 1) {
+      if (i === 3 || i === totalPages - 2) btns += `<span class="page-info">…</span>`;
+      continue;
+    }
+    btns += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  }
+  btns += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  btns += `<span class="page-info">${filtered.length} clientes</span>`;
+  pg.innerHTML = btns;
+}
+
+function goPage(p) {
+  const total = Math.ceil(filtered.length / PAGE_SIZE);
+  if (p < 1 || p > total) return;
+  currentPage = p;
+  render();
+}
+
+// MODALS
+function openModal(id)  { document.getElementById(id).classList.add('visible'); }
+function closeModal(id) { document.getElementById(id).classList.remove('visible'); if (id === 'clienteModal') editingId = null; }
+
+function clearForm() {
+  ['f-nome','f-sobrenome','f-telefone','f-email','f-observacao'].forEach(id => document.getElementById(id).value = '');
+}
+
+function openNewModal() {
+  editingId = null;
+  clearForm();
+  document.getElementById('modalTitle').textContent = 'Novo Cliente';
+  openModal('clienteModal');
+}
+
+function openEditModal(id) {
+  const c = allClientes.find(x => x.id_cliente === id);
+  if (!c) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Editar Cliente';
+  document.getElementById('f-nome').value       = c.nome       || '';
+  document.getElementById('f-sobrenome').value  = c.sobrenome  || '';
+  document.getElementById('f-telefone').value   = c.telefone   || '';
+  document.getElementById('f-email').value      = c.email      || '';
+  document.getElementById('f-observacao').value = c.observacao || '';
+  openModal('clienteModal');
+}
+
+function openConfirmDelete(id, nome) {
+  deletingId = id;
+  document.getElementById('confirmNome').textContent = nome;
+  openModal('confirmModal');
+}
+
+// SAVE
+async function saveCliente() {
+  const nome      = document.getElementById('f-nome').value.trim();
+  const sobrenome = document.getElementById('f-sobrenome').value.trim();
+  const telefone  = document.getElementById('f-telefone').value.trim();
+  const email     = document.getElementById('f-email').value.trim();
+  const observacao = document.getElementById('f-observacao').value.trim();
+
+  if (!nome) { toast('O nome é obrigatório.', true); return; }
+
+  const payload = { nome, sobrenome: sobrenome||null, telefone: telefone||null, email: email||null, observacao: observacao||null };
+
+  const btn = document.getElementById('btnSalvar');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  loadStart();
+  try {
+    if (editingId) {
+      await supa(`clientes?id_cliente=eq.${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      toast('Cliente atualizado!');
+    } else {
+      await supa('clientes', { method: 'POST', body: JSON.stringify(payload) });
+      toast('Cliente criado!');
+    }
+    closeModal('clienteModal');
+    await loadClientes();
+  } catch(e) {
+    toast('Erro ao salvar: ' + e.message, true);
+  }
+  btn.disabled = false; btn.textContent = 'Salvar Cliente';
+  loadDone();
+}
+
+// DELETE
+async function deleteCliente() {
+  if (!deletingId) return;
+  const btn = document.getElementById('btnConfirmDelete');
+  btn.disabled = true; btn.textContent = 'Excluindo…';
+  loadStart();
+  try {
+    await supa(`clientes?id_cliente=eq.${deletingId}`, { method: 'DELETE' });
+    toast('Cliente excluído.');
+    closeModal('confirmModal');
+    deletingId = null;
+    await loadClientes();
+  } catch(e) {
+    toast('Erro ao excluir: ' + e.message, true);
+  }
+  btn.disabled = false; btn.textContent = 'Excluir';
+  loadDone();
+}
+
+// INIT
+loadClientes();
+</script>
+</body>
+</html>
