@@ -12,9 +12,10 @@
     .config-card .sub-info { font-size: .82rem; color: var(--text-mid); margin-top: -14px; margin-bottom: 18px; }
     .input-money { position: relative; }
     .input-money .prefix { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-mid); font-size: .9rem; pointer-events: none; }
-    .input-money .suffix { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-mid); font-size: .9rem; pointer-events: none; }
     .input-money input.pref { padding-left: 38px; }
-    .input-money input.suf  { padding-right: 38px; }
+    .input-money.with-suf { display: flex; align-items: center; gap: 4px; }
+    .input-money.with-suf input.suf { flex: 1; min-width: 0; }
+    .input-money.with-suf .suffix { color: var(--text-mid); font-size: 1rem; font-weight: 600; pointer-events: none; flex-shrink: 0; padding-right: 6px; }
     .month-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
     .month-bar label { font-family: var(--font-body); font-size: .85rem; color: var(--text-mid); }
     .month-bar input[type=month] { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 50px; padding: 8px 18px; font-family: var(--font-body); font-size: .9rem; color: var(--text-dark); outline: none; cursor: pointer; }
@@ -39,6 +40,8 @@
     .calc-result .label { font-family: var(--font-body); font-size: .82rem; color: var(--text-mid); margin-bottom: 4px; }
     .calc-result .value { font-family: var(--font-display); font-size: 2rem; color: var(--accent); letter-spacing: .02em; }
     .calc-result.empty .value { color: var(--text-mid); font-size: 1.2rem; }
+    .calc-result.invalid .value { color: #b71c1c; font-size: 1.1rem; }
+    .formula-info { font-family: var(--font-body); font-size: .75rem; color: var(--text-mid); margin-top: 8px; line-height: 1.5; }
     .save-bar { position: sticky; bottom: 16px; background: rgba(247,240,232,0.95); backdrop-filter: blur(6px); padding: 16px; border-radius: 14px; border: 1.5px solid var(--card-border); display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; box-shadow: 0 -4px 20px rgba(0,0,0,.05); }
   </style>
 </head>
@@ -83,7 +86,7 @@
         </div>
         <div class="form-group">
           <label>Taxa de Reinvestimento</label>
-          <div class="input-money">
+          <div class="input-money with-suf">
             <input type="number" id="p-reinvest" class="suf" step="0.01" min="0" max="100" placeholder="0"/>
             <span class="suffix">%</span>
           </div>
@@ -91,28 +94,45 @@
         </div>
         <div class="form-group">
           <label>Margem de Lucro Desejada</label>
-          <div class="input-money">
+          <div class="input-money with-suf">
             <input type="number" id="p-margem" class="suf" step="0.01" min="0" max="500" placeholder="0"/>
             <span class="suffix">%</span>
           </div>
-          <span style="font-size:.75rem;color:var(--text-mid);margin-top:4px">Aplicada sobre o custo na calculadora de preço.</span>
+          <span style="font-size:.75rem;color:var(--text-mid);margin-top:4px">Margem de lucro usada como referência geral.</span>
         </div>
       </div>
     </div>
 
     <div class="config-card">
       <h2>Calculadora de Preço</h2>
-      <p class="sub-info">Sugere preço de venda com base no custo + margem desejada.</p>
-      <div class="form-group">
-        <label>Custo Base do Produto (R$)</label>
-        <div class="input-money">
-          <span class="prefix">R$</span>
-          <input type="number" id="calc-custo" class="pref" step="0.01" min="0" placeholder="0,00" oninput="calcular()"/>
+      <p class="sub-info">Calcula o preço de venda ideal considerando custos e lucro desejado.</p>
+      <div class="form-grid" style="grid-template-columns:1fr;gap:14px">
+        <div class="form-group">
+          <label>Custo do Produto (R$)</label>
+          <div class="input-money">
+            <span class="prefix">R$</span>
+            <input type="number" id="calc-custo" class="pref" step="0.01" min="0" placeholder="0,00" oninput="calcular()"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Custo Variável</label>
+          <div class="input-money with-suf">
+            <input type="number" id="calc-custo-var" class="suf" step="0.01" min="0" max="100" placeholder="0" oninput="calcular()"/>
+            <span class="suffix">%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Lucro Esperado (R$)</label>
+          <div class="input-money">
+            <span class="prefix">R$</span>
+            <input type="number" id="calc-lucro" class="pref" step="0.01" min="0" placeholder="0,00" oninput="calcular()"/>
+          </div>
         </div>
       </div>
       <div class="calc-result empty" id="calc-result">
         <div class="label">Preço Sugerido de Venda</div>
         <div class="value">—</div>
+        <div class="formula-info" id="calc-formula"></div>
       </div>
     </div>
   </div>
@@ -242,7 +262,7 @@ function updateCost(tipo, key, field, val) {
   if (!c) return;
   c[field] = field === 'valor' ? (parseFloat(val) || 0) : val;
   c._dirty = true;
-  if (field === 'valor') updateTotals();
+  if (field === 'valor') { updateTotals(); if (tipo === 'fixos') calcular(); }
 }
 
 function addCostRow(tipo) {
@@ -252,6 +272,7 @@ function addCostRow(tipo) {
   // focus on new input
   const rows = document.querySelectorAll('#list-' + tipo + ' .cost-row');
   if (rows.length) rows[rows.length - 1].querySelector('.c-nome').focus();
+  if (tipo === 'fixos') calcular();
 }
 
 function removeCost(tipo, key) {
@@ -259,6 +280,7 @@ function removeCost(tipo, key) {
   removed.add(isNaN(parseInt(key)) ? key : parseInt(key));
   renderCostList(tipo);
   updateTotals();
+  if (tipo === 'fixos') calcular();
 }
 
 function updateTotals() {
@@ -269,21 +291,59 @@ function updateTotals() {
 }
 
 function calcular() {
-  const custo = parseFloat(document.getElementById('calc-custo').value);
-  const margem = parseFloat(document.getElementById('p-margem').value) || 0;
-  const res = document.getElementById('calc-result');
-  if (!custo || custo <= 0) {
+  // Inputs da calculadora
+  const custoProduto  = parseFloat(document.getElementById('calc-custo').value)     || 0;
+  const custoVarPct   = parseFloat(document.getElementById('calc-custo-var').value) || 0; // %
+  const lucroEsperado = parseFloat(document.getElementById('calc-lucro').value)     || 0; // R$
+
+  // Parâmetros vindos do faturamento e dos custos fixos
+  const faturamento = parseFloat(document.getElementById('p-faturamento').value) || 0;
+  const totalFixos  = custosFixos
+    .filter(c => !removedFixos.has(c.id_custo_fixo || c._tempId))
+    .reduce((s, c) => s + (parseFloat(c.valor) || 0), 0);
+
+  const res    = document.getElementById('calc-result');
+  const valEl  = res.querySelector('.value');
+  const formEl = document.getElementById('calc-formula');
+
+  // Estado vazio: nenhum custo de produto informado
+  if (!custoProduto || custoProduto <= 0) {
     res.className = 'calc-result empty';
-    res.querySelector('.value').textContent = '—';
+    valEl.textContent = '—';
+    formEl.textContent = '';
     return;
   }
-  const preco = custo * (1 + margem/100);
+
+  // Fórmula: CUSTO PRODUTO / (1 − CUSTO_VAR% − LUCRO_ESPERADO − (CUSTO_FIXO / FATURAMENTO))
+  const fracVar    = custoVarPct / 100;
+  const fracFixo   = faturamento > 0 ? (totalFixos / faturamento) : 0;
+  const denominador = 1 - fracVar - lucroEsperado - fracFixo;
+
+  if (denominador <= 0) {
+    res.className = 'calc-result invalid';
+    valEl.textContent = 'Cálculo inviável';
+    formEl.innerHTML = `O denominador da fórmula resultou em <b>${denominador.toFixed(4).replace('.', ',')}</b>.<br>Reduza o custo variável, o lucro esperado, ou aumente o faturamento.`;
+    return;
+  }
+
+  const preco = custoProduto / denominador;
   res.className = 'calc-result';
-  res.querySelector('.value').textContent = 'R$ ' + fmtMoney(preco);
+  valEl.textContent = 'R$ ' + fmtMoney(preco);
+  formEl.innerHTML = `
+    Fórmula: <b>${fmtMoney(custoProduto)} ÷ (1 − ${(fracVar*100).toFixed(2).replace('.', ',')}% − ${fmtMoney(lucroEsperado)} − ${(fracFixo*100).toFixed(2).replace('.', ',')}%)</b><br>
+    Faturamento: R$ ${fmtMoney(faturamento)} · Custos fixos: R$ ${fmtMoney(totalFixos)}
+  `;
 }
 
+// Recalcula automaticamente sempre que QUALQUER parâmetro mudar
 document.addEventListener('input', e => {
-  if (e.target.id === 'p-margem') calcular();
+  const t = e.target;
+  if (!t || !t.id) return;
+  // Qualquer alteração no faturamento, taxas ou linhas de custos dispara o recálculo
+  if (t.id === 'p-faturamento' || t.id === 'p-reinvest' || t.id === 'p-margem' ||
+      t.classList.contains('c-nome') || t.classList.contains('c-valor')) {
+    calcular();
+  }
 });
 
 async function saveAll() {
