@@ -1,10 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap');
-
-@font-face {
-  font-family: 'Higuen';
-  src: url('https://fonts.cdnfonts.com/s/15399/HiguenElegantSerifDemo.woff') format('woff');
-  font-weight: 400; font-style: normal;
-}
+@import url('https://fonts.cdnfonts.com/css/rachelna');
 
 :root {
   --sidebar-bg: #C0544E; --sidebar-text: #fff;
@@ -13,7 +8,7 @@
   --text-dark: #5C2E28; --text-mid: #7A4A40;
   --accent: #C0544E; --btn-bg: #C0544E; --btn-text: #fff;
   --inner-bg: #F2E8DC;
-  --font-display: 'Higuen','Playfair Display',Georgia,serif;
+  --font-display: 'Rachelna','Playfair Display',Georgia,serif;
   --font-body: 'Bree Serif',Georgia,serif;
 }
 
