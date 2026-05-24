@@ -4,118 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Clientes – Casa Personalizada</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap" rel="stylesheet"/>
-  <style>
-    @font-face {
-      font-family: 'Higuen';
-      src: url('https://fonts.cdnfonts.com/s/15399/HiguenElegantSerifDemo.woff') format('woff');
-      font-weight: 400; font-style: normal;
-    }
-    :root {
-      --sidebar-bg: #C0544E; --sidebar-text: #fff;
-      --bg: #F7F0E8; --card-bg: #EDE0D0; --card-border: #C0877A;
-      --row-bg: #E8D9C8; --row-hover: #DFD0BE; --row-alt: #EDE0D0;
-      --text-dark: #5C2E28; --text-mid: #7A4A40;
-      --accent: #C0544E; --btn-bg: #C0544E; --btn-text: #fff;
-      --font-display: 'Higuen','Playfair Display',Georgia,serif;
-      --font-body: 'Bree Serif',Georgia,serif;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--font-body); background: var(--bg); color: var(--text-dark); display: flex; min-height: 100vh; }
-
-    /* SIDEBAR */
-    .sidebar { width: 210px; min-height: 100vh; background: var(--sidebar-bg); display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0; }
-    .logo-svg-wrap { width: 90px; margin: 0 auto 32px; display: flex; justify-content: center; }
-    .sidebar nav a { display: block; padding: 10px 28px; color: var(--sidebar-text); text-decoration: none; font-family: var(--font-body); font-size: .97rem; transition: background .15s; }
-    .sidebar nav a:hover, .sidebar nav a.active { background: rgba(255,255,255,.15); }
-
-    /* LOADING BAR */
-    .loading-bar { height: 3px; background: var(--accent); position: fixed; top: 0; left: 210px; right: 0; z-index: 200; transform-origin: left; transform: scaleX(0); transition: transform .4s ease; }
-    .loading-bar.active { transform: scaleX(.7); }
-    .loading-bar.done   { transform: scaleX(1); transition: transform .2s ease; }
-
-    /* MAIN */
-    .main { flex: 1; padding: 40px 48px; overflow-y: auto; min-width: 0; }
-    h1.page-title { font-family: var(--font-display); font-size: 3.2rem; font-weight: 400; color: var(--text-dark); text-align: center; margin-bottom: 32px; letter-spacing: .03em; }
-
-    /* SEARCH + ACTIONS */
-    .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-    .search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 360px; }
-    .search-wrap input { width: 100%; background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 50px; padding: 9px 18px 9px 40px; font-family: var(--font-body); font-size: .9rem; color: var(--text-dark); outline: none; transition: border-color .15s; }
-    .search-wrap input:focus { border-color: var(--accent); }
-    .search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-
-    .btn { display: inline-flex; align-items: center; gap: 7px; background: var(--btn-bg); color: var(--btn-text); border: none; border-radius: 50px; padding: 9px 22px; font-family: var(--font-body); font-size: .93rem; cursor: pointer; letter-spacing: .01em; transition: filter .15s, transform .1s; }
-    .btn:hover { filter: brightness(.88); transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
-
-    /* TABLE */
-    .table-container { background: var(--card-bg); border-radius: 18px; border: 2px solid var(--card-border); overflow: hidden; }
-    .tbl-header { display: grid; grid-template-columns: 60px 1fr 1fr 140px 200px 120px 80px; background: var(--card-bg); border-bottom: 2px solid var(--card-border); padding: 13px 20px; gap: 8px; }
-    .tbl-header span { font-family: var(--font-body); font-size: .78rem; color: var(--text-mid); text-align: center; line-height: 1.3; }
-    .tbl-header span:first-child { text-align: left; }
-
-    .client-row { display: grid; grid-template-columns: 60px 1fr 1fr 140px 200px 120px 80px; align-items: center; padding: 13px 20px; gap: 8px; border-bottom: 1px solid var(--card-border); cursor: pointer; transition: background .14s; user-select: none; }
-    .client-row:last-child { border-bottom: none; }
-    .client-row:nth-child(odd)  { background: var(--row-bg); }
-    .client-row:nth-child(even) { background: var(--row-alt); }
-    .client-row:hover { background: var(--row-hover); }
-    .client-row.selected { outline: 2.5px solid var(--accent); outline-offset: -2px; }
-
-    .client-row span { font-family: var(--font-body); font-size: .88rem; color: var(--text-dark); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .client-row span:first-child { text-align: left; font-size: .8rem; color: var(--text-mid); }
-    .client-row .name-cell { text-align: left; font-size: .92rem; }
-
-    /* ROW ACTIONS */
-    .row-actions { display: flex; gap: 6px; justify-content: center; }
-    .btn-icon { width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: filter .14s, transform .1s; flex-shrink: 0; }
-    .btn-icon:hover { filter: brightness(.88); transform: scale(1.1); }
-    .btn-edit-icon  { background: #fff3cd; }
-    .btn-del-icon   { background: #fde8e8; }
-
-    /* EMPTY / LOADING */
-    .empty-state { text-align: center; padding: 48px 20px; color: var(--text-mid); font-size: .95rem; }
-
-    /* PAGINATION */
-    .pagination { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
-    .page-btn { background: var(--card-bg); border: 1.5px solid var(--card-border); color: var(--text-dark); border-radius: 8px; padding: 6px 14px; font-family: var(--font-body); font-size: .85rem; cursor: pointer; transition: background .14s; }
-    .page-btn:hover { background: var(--row-hover); }
-    .page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .page-btn:disabled { opacity: .4; cursor: not-allowed; }
-    .page-info { font-family: var(--font-body); font-size: .83rem; color: var(--text-mid); }
-
-    /* MODAL */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(92,46,40,.4); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
-    .modal-overlay.visible { display: flex; }
-    .modal { background: var(--bg); border-radius: 20px; border: 2px solid var(--card-border); padding: 40px 44px 36px; width: 620px; max-width: 95vw; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 16px 56px rgba(92,46,40,.22); animation: modalIn .22s ease; }
-    @keyframes modalIn { from { opacity:0; transform:translateY(-16px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
-    .modal h2 { font-family: var(--font-display); font-size: 1.7rem; color: var(--text-dark); margin-bottom: 26px; letter-spacing: .02em; }
-    .modal-close { position: absolute; top: 18px; right: 18px; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); border: none; color: #fff; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s, transform .15s; box-shadow: 0 2px 8px rgba(192,84,78,.3); }
-    .modal-close:hover { background: #a3433d; transform: rotate(90deg) scale(1.08); }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
-    .form-group { display: flex; flex-direction: column; gap: 5px; }
-    .form-group.full { grid-column: 1 / -1; }
-    .form-group label { font-family: var(--font-body); font-size: .8rem; color: var(--text-mid); }
-    .form-group input, .form-group textarea { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 10px; padding: 10px 14px; font-family: var(--font-body); font-size: .92rem; color: var(--text-dark); outline: none; transition: border-color .15s, box-shadow .15s; resize: vertical; }
-    .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192,84,78,.12); }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 26px; }
-    .btn-secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
-    .btn-secondary:hover { background: rgba(192,84,78,.08); filter: none; }
-
-    /* CONFIRM */
-    .confirm-modal { background: var(--bg); border-radius: 20px; border: 2px solid var(--card-border); padding: 44px 44px 36px; width: 420px; max-width: 95vw; text-align: center; position: relative; box-shadow: 0 16px 56px rgba(92,46,40,.22); animation: modalIn .22s ease; }
-    .confirm-modal p { font-family: var(--font-body); font-size: .97rem; color: var(--text-dark); margin-bottom: 8px; line-height: 1.6; }
-    .confirm-modal .cliente-nome { font-size: 1.05rem; color: var(--accent); font-weight: 700; margin-bottom: 20px; }
-    .confirm-modal .modal-actions { justify-content: center; }
-    .btn-danger { background: #b71c1c; }
-    .btn-danger:hover { filter: brightness(.88); }
-
-    /* TOAST */
-    .toast { position: fixed; bottom: 28px; right: 28px; background: #5C2E28; color: #fff; font-family: var(--font-body); font-size: .9rem; padding: 12px 22px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.2); opacity: 0; transform: translateY(12px); transition: opacity .3s, transform .3s; z-index: 999; pointer-events: none; }
-    .toast.show  { opacity: 1; transform: translateY(0); }
-    .toast.error { background: #b71c1c; }
-  </style>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
@@ -126,10 +15,10 @@
   <nav>
     <a href="index.html">Relatórios</a>
     <a href="pedidos.html">Pedidos</a>
-    <a href="#">Insumos</a>
-    <a href="#">Produtos</a>
+    <a href="insumos.html">Insumos</a>
+    <a href="produtos.html">Produtos</a>
     <a href="clientes.html" class="active">Clientes</a>
-    <a href="#">Fornecedores</a>
+    <a href="fornecedores.html">Fornecedores</a>
     <a href="#">Balanço</a>
   </nav>
 </aside>

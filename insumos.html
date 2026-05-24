@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Insumos – Casa Personalizada</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .tbl-insumos { grid-template-columns: 70px 1fr 120px 100px 80px; }
+    .expand-section { background: var(--inner-bg); padding: 16px 28px 18px; display: none; }
+    .expand-section.visible { display: block; }
+    .expand-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .expand-block h4 { font-family: var(--font-display); font-size: .92rem; color: var(--text-dark); margin-bottom: 10px; border-bottom: 1px solid var(--card-border); padding-bottom: 6px; }
+    .mini-row { display: grid; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(192,135,122,.2); font-family: var(--font-body); font-size: .84rem; color: var(--text-dark); }
+    .mini-row:last-child { border-bottom: none; }
+    .mini-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mini-header { font-size: .74rem; color: var(--text-mid); }
+    .toggle-cell { display: flex; align-items: center; gap: 8px; }
+    .toggle-btn { width: 22px; height: 22px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; }
+    .toggle-btn svg { transition: transform .25s; }
+    .toggle-btn.open svg { transform: rotate(0deg); }
+    .toggle-btn:not(.open) svg { transform: rotate(-90deg); }
+    .order-block { border-bottom: 1px solid var(--card-border); }
+    .order-block:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+<div class="loading-bar" id="loadingBar"></div>
+<aside class="sidebar">
+  <div class="logo-svg-wrap"><img src="img/logo.png" alt="Logo" style="width:150px;height:80px;object-fit:contain;"/></div>
+  <nav>
+    <a href="index.html">Relatórios</a>
+    <a href="pedidos.html">Pedidos</a>
+    <a href="insumos.html" class="active">Insumos</a>
+    <a href="produtos.html">Produtos</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="fornecedores.html">Fornecedores</a>
+    <a href="#">Balanço</a>
+  </nav>
+</aside>
+<main class="main">
+  <h1 class="page-title">Insumos</h1>
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#7A4A40" stroke-width="1.8"/><path d="M10.5 10.5L14 14" stroke="#7A4A40" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" id="searchInput" placeholder="Buscar insumo…" oninput="filterData()"/>
+    </div>
+    <button class="btn" onclick="openNewModal()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
+      Novo Insumo
+    </button>
+  </div>
+  <div class="table-container">
+    <div class="tbl-header tbl-insumos">
+      <span class="left">ID</span><span class="left">Nome</span><span>Quantidade</span><span>Produtos</span><span>Ações</span>
+    </div>
+    <div id="data-list"><div class="empty-state">Carregando…</div></div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="mainModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('mainModal')">✕</button>
+    <h2 id="modalTitle">Novo Insumo</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nome *</label>
+        <input type="text" id="f-nome" placeholder="Nome do insumo"/>
+      </div>
+      <div class="form-group">
+        <label>Quantidade em estoque</label>
+        <input type="number" id="f-qtd" placeholder="0" min="0"/>
+      </div>
+    </div>
+    <!-- Fornecedores do insumo -->
+    <div class="sub-section">
+      <h3>Fornecedores deste Insumo</h3>
+      <div class="sub-col-header" style="grid-template-columns:1fr 120px 80px 40px;">
+        <span>Fornecedor</span><span>Preço</span><span>Qtd</span><span></span>
+      </div>
+      <div id="modal-fornecedores"></div>
+      <button class="btn-add-row" onclick="addFornecRow()">+ Adicionar fornecedor</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('mainModal')">Cancelar</button>
+      <button class="btn" id="btnSalvar" onclick="saveItem()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-modal">
+    <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+    <p>Excluir o insumo</p>
+    <span class="highlight" id="confirmNome"></span>
+    <p style="font-size:.85rem;color:var(--text-mid);margin-bottom:24px;">Isso também removerá os vínculos com fornecedores.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancelar</button>
+      <button class="btn btn-danger" id="btnDel" onclick="deleteItem()">Excluir</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script>
+let allData=[], filtered=[], fornecedores=[], produtos=[], expandedIds=new Set(), expandCache={};
+let editingId=null, deletingId=null, currentPage=1;
+const PAGE=15;
+
+async function loadAll() {
+  loadStart();
+  try {
+    const [ins, forn, prod] = await Promise.all([
+      supa('insumos?select=*&order=nome.asc'),
+      supa('fornecedores?select=id_fornecedor,nome&order=nome.asc'),
+      supa('produtos?select=id_produto,nome,id_insumo'),
+    ]);
+    allData=ins||[]; fornecedores=forn||[]; produtos=prod||[];
+    filtered=[...allData]; render();
+  } catch(e){ toast('Erro: '+e.message,true); }
+  loadDone();
+}
+
+function filterData() {
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  filtered=q?allData.filter(x=>x.nome.toLowerCase().includes(q)):[...allData];
+  currentPage=1; render();
+}
+
+function render() {
+  const el=document.getElementById('data-list');
+  if(!filtered.length){ el.innerHTML='<div class="empty-state">Nenhum insumo encontrado.</div>'; document.getElementById('pagination').innerHTML=''; return; }
+  const start=(currentPage-1)*PAGE, page=filtered.slice(start,start+PAGE);
+  el.innerHTML=page.map(r=>{
+    const isExp=expandedIds.has(r.id_insumo);
+    const numProd=produtos.filter(p=>p.id_insumo===r.id_insumo).length;
+    const cached=expandCache[r.id_insumo];
+    let expandHtml='';
+    if(isExp){
+      if(cached===undefined){ expandHtml=`<div class="expand-section visible" id="exp-${r.id_insumo}"><div class="empty-state" style="padding:16px">Carregando…</div></div>`; loadExpand(r.id_insumo); }
+      else {
+        const prods=produtos.filter(p=>p.id_insumo===r.id_insumo);
+        expandHtml=`<div class="expand-section visible" id="exp-${r.id_insumo}">
+          <div class="expand-grid">
+            <div class="expand-block">
+              <h4>Produtos que usam este insumo (${prods.length})</h4>
+              ${prods.length?prods.map(p=>`<div class="mini-row" style="grid-template-columns:40px 1fr;"><span style="color:var(--text-mid)">#${p.id_produto}</span><span>${p.nome}</span></div>`).join(''):'<div style="font-size:.84rem;color:var(--text-mid);padding:8px 0">Nenhum produto vinculado.</div>'}
+            </div>
+            <div class="expand-block">
+              <h4>Fornecedores (${(cached||[]).length})</h4>
+              ${(cached||[]).length?`<div class="mini-row mini-header" style="grid-template-columns:1fr 100px 80px;"><span>Fornecedor</span><span style="text-align:center">Preço</span><span style="text-align:center">Qtd</span></div>`+cached.map(f=>`<div class="mini-row" style="grid-template-columns:1fr 100px 80px;"><span>${f.fornecedores?.nome||'—'}</span><span style="text-align:center">R$ ${fmtMoney(f.preco)}</span><span style="text-align:center">${f.quantidade}</span></div>`).join(''):'<div style="font-size:.84rem;color:var(--text-mid);padding:8px 0">Sem fornecedores.</div>'}
+            </div>
+          </div>
+        </div>`;
+      }
+    }
+    return `<div class="order-block">
+      <div class="data-row tbl-insumos" style="cursor:pointer" onclick="">
+        <span class="left toggle-cell">
+          <button class="toggle-btn ${isExp?'open':''}" onclick="toggleExp(event,${r.id_insumo})">
+            <svg width="12" height="8" viewBox="0 0 12 8"><path d="M1 1l5 5 5-5" stroke="#5C2E28" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          </button>
+          #${r.id_insumo}
+        </span>
+        <span class="left">${r.nome}</span>
+        <span>${r.quantidade??'—'}</span>
+        <span>${numProd} produto${numProd!==1?'s':''}</span>
+        <span class="row-actions">
+          <button class="btn-icon btn-edit-icon" onclick="openEdit(${r.id_insumo})" title="Editar"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5L11.5 4.5L5 11H3v-2L9.5 2.5Z" stroke="#856404" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+          <button class="btn-icon btn-del-icon" onclick="openDel(${r.id_insumo},'${r.nome.replace(/'/g,"\\'")}')}" title="Excluir"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </span>
+      </div>
+      ${expandHtml}
+    </div>`;
+  }).join('');
+  buildPagination('pagination', currentPage, filtered.length, PAGE, 'goPage');
+}
+
+function goPage(p){ const t=Math.ceil(filtered.length/PAGE); if(p<1||p>t)return; currentPage=p; render(); }
+
+async function loadExpand(id) {
+  try {
+    const data=await supa(`insumo_fornecedor?select=*,fornecedores(nome)&id_insumo=eq.${id}`);
+    expandCache[id]=data||[]; render();
+  } catch(e){ expandCache[id]=[]; render(); }
+}
+
+function toggleExp(e,id){ e.stopPropagation(); expandedIds.has(id)?expandedIds.delete(id):expandedIds.add(id); render(); }
+
+function openModal(id){ document.getElementById(id).classList.add('visible'); }
+function closeModal(id){ document.getElementById(id).classList.remove('visible'); if(id==='mainModal')editingId=null; }
+
+function buildFornSelect(selId='') {
+  return `<option value="">Selecione…</option>`+fornecedores.map(f=>`<option value="${f.id_fornecedor}" ${f.id_fornecedor==selId?'selected':''}>${f.nome}</option>`).join('');
+}
+
+function addFornecRow(f={}) {
+  const div=document.createElement('div'); div.className='sub-row'; div.style.gridTemplateColumns='1fr 120px 80px 40px';
+  div.innerHTML=`<select class="f-forn">${buildFornSelect(f.id_fornecedor)}</select><input type="number" class="f-preco" placeholder="R$ 0,00" value="${f.preco||''}" step="0.01" min="0"/><input type="number" class="f-qty" placeholder="Qtd" value="${f.quantidade||''}" min="0"/><button class="btn-remove" onclick="this.parentElement.remove()">✕</button>`;
+  document.getElementById('modal-fornecedores').appendChild(div);
+}
+
+function openNewModal() {
+  editingId=null;
+  document.getElementById('modalTitle').textContent='Novo Insumo';
+  document.getElementById('f-nome').value='';
+  document.getElementById('f-qtd').value='';
+  document.getElementById('modal-fornecedores').innerHTML='';
+  openModal('mainModal');
+}
+
+async function openEdit(id) {
+  const r=allData.find(x=>x.id_insumo===id); if(!r)return;
+  editingId=id;
+  document.getElementById('modalTitle').textContent='Editar Insumo';
+  document.getElementById('f-nome').value=r.nome||'';
+  document.getElementById('f-qtd').value=r.quantidade??'';
+  document.getElementById('modal-fornecedores').innerHTML='';
+  // load fornecedores for this insumo
+  try {
+    const data=await supa(`insumo_fornecedor?select=*&id_insumo=eq.${id}`);
+    (data||[]).forEach(f=>addFornecRow(f));
+  } catch(e){}
+  openModal('mainModal');
+}
+
+function openDel(id,nome){ deletingId=id; document.getElementById('confirmNome').textContent=nome; openModal('confirmModal'); }
+
+async function saveItem() {
+  const nome=document.getElementById('f-nome').value.trim();
+  const quantidade=parseInt(document.getElementById('f-qtd').value)||0;
+  if(!nome){ toast('Nome obrigatório.',true); return; }
+  const btn=document.getElementById('btnSalvar'); btn.disabled=true; btn.textContent='Salvando…';
+  loadStart();
+  try {
+    let insId=editingId;
+    if(editingId){ await supa(`insumos?id_insumo=eq.${editingId}`,{method:'PATCH',body:JSON.stringify({nome,quantidade})}); }
+    else { const [r]=await supa('insumos',{method:'POST',body:JSON.stringify({nome,quantidade})}); insId=r.id_insumo; }
+    // sync fornecedores
+    await supa(`insumo_fornecedor?id_insumo=eq.${insId}`,{method:'DELETE'});
+    const rows=[...document.querySelectorAll('#modal-fornecedores .sub-row')];
+    const fRows=rows.map(d=>({id_insumo:insId,id_fornecedor:parseInt(d.querySelector('.f-forn').value),preco:parseFloat(d.querySelector('.f-preco').value)||0,quantidade:parseInt(d.querySelector('.f-qty').value)||0})).filter(x=>x.id_fornecedor);
+    if(fRows.length) await supa('insumo_fornecedor',{method:'POST',body:JSON.stringify(fRows)});
+    delete expandCache[insId];
+    toast(editingId?'Insumo atualizado!':'Insumo criado!');
+    closeModal('mainModal'); await loadAll();
+  } catch(e){ toast('Erro: '+e.message,true); }
+  btn.disabled=false; btn.textContent='Salvar'; loadDone();
+}
+
+async function deleteItem() {
+  const btn=document.getElementById('btnDel'); btn.disabled=true; btn.textContent='Excluindo…'; loadStart();
+  try {
+    await supa(`insumo_fornecedor?id_insumo=eq.${deletingId}`,{method:'DELETE'});
+    await supa(`insumos?id_insumo=eq.${deletingId}`,{method:'DELETE'});
+    delete expandCache[deletingId]; expandedIds.delete(deletingId);
+    toast('Insumo excluído.'); closeModal('confirmModal'); await loadAll();
+  } catch(e){ toast('Erro: '+e.message,true); }
+  btn.disabled=false; btn.textContent='Excluir'; loadDone();
+}
+loadAll();
+</script>
+</body>
+</html>

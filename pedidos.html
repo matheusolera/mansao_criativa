@@ -4,118 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Pedidos – Casa Personalizada</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap" rel="stylesheet"/>
-  <style>
-    @font-face {
-      font-family: 'Higuen';
-      src: url('https://fonts.cdnfonts.com/s/15399/HiguenElegantSerifDemo.woff') format('woff');
-      font-weight: 400; font-style: normal;
-    }
-    :root {
-      --sidebar-bg: #C0544E; --sidebar-text: #fff;
-      --bg: #F7F0E8; --card-bg: #EDE0D0; --card-border: #C0877A;
-      --row-bg: #E8D9C8; --row-hover: #DFD0BE;
-      --text-dark: #5C2E28; --text-mid: #7A4A40;
-      --accent: #C0544E; --btn-bg: #C0544E; --btn-text: #fff;
-      --inner-bg: #F2E8DC;
-      --font-display: 'Higuen','Playfair Display',Georgia,serif;
-      --font-body: 'Bree Serif',Georgia,serif;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--font-body); background: var(--bg); color: var(--text-dark); display: flex; min-height: 100vh; }
-
-    .sidebar { width: 210px; min-height: 100vh; background: var(--sidebar-bg); display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0; }
-    .logo-svg-wrap { width: 90px; margin: 0 auto 32px; display: flex; justify-content: center; }
-    .sidebar nav a { display: block; padding: 10px 28px; color: var(--sidebar-text); text-decoration: none; font-family: var(--font-body); font-size: .97rem; transition: background .15s; }
-    .sidebar nav a:hover, .sidebar nav a.active { background: rgba(255,255,255,.15); }
-
-    .loading-bar { height: 3px; background: var(--accent); position: fixed; top: 0; left: 210px; right: 0; z-index: 200; transform-origin: left; transform: scaleX(0); transition: transform .4s ease; }
-    .loading-bar.active { transform: scaleX(.7); }
-    .loading-bar.done   { transform: scaleX(1); transition: transform .2s ease; }
-
-    .main { flex: 1; padding: 40px 48px; overflow-y: auto; min-width: 0; }
-    h1.page-title { font-family: var(--font-display); font-size: 3.2rem; font-weight: 400; color: var(--text-dark); text-align: center; margin-bottom: 32px; letter-spacing: .03em; }
-
-    .actions { display: flex; gap: 12px; margin-bottom: 20px; }
-    .btn { display: inline-flex; align-items: center; gap: 7px; background: var(--btn-bg); color: var(--btn-text); border: none; border-radius: 50px; padding: 9px 22px; font-family: var(--font-body); font-size: .93rem; cursor: pointer; letter-spacing: .01em; transition: filter .15s, transform .1s; }
-    .btn:hover { filter: brightness(.88); transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
-
-    .table-container { background: var(--card-bg); border-radius: 18px; border: 2px solid var(--card-border); overflow: hidden; }
-    .tbl-header { display: grid; grid-template-columns: 100px 110px 150px 180px 120px 130px 155px; background: var(--card-bg); border-bottom: 2px solid var(--card-border); padding: 14px 16px; gap: 4px; }
-    .tbl-header span { font-family: var(--font-body); font-size: .78rem; color: var(--text-mid); text-align: center; line-height: 1.3; }
-
-    .order-block { border-bottom: 1px solid var(--card-border); }
-    .order-block:last-child { border-bottom: none; }
-    .order-row { display: grid; grid-template-columns: 100px 110px 150px 180px 120px 130px 155px; align-items: center; padding: 13px 16px; background: var(--row-bg); cursor: pointer; transition: background .14s; user-select: none; gap: 4px; }
-    .order-row:hover { background: var(--row-hover); }
-    .order-row.selected-row { outline: 2.5px solid var(--accent); outline-offset: -2px; }
-    .order-row span { text-align: center; font-family: var(--font-body); font-size: .86rem; color: var(--text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    .toggle-cell { display: flex; align-items: center; gap: 7px; justify-content: flex-start; }
-    .toggle-btn { width: 22px; height: 22px; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; }
-    .toggle-btn svg { transition: transform .25s; }
-    .toggle-btn.open svg { transform: rotate(0deg); }
-    .toggle-btn:not(.open) svg { transform: rotate(-90deg); }
-
-    .status-wrap { display: flex; justify-content: center; }
-    .status-select { appearance: none; -webkit-appearance: none; border: none; border-radius: 20px; padding: 5px 28px 5px 12px; font-family: var(--font-body); font-size: .78rem; cursor: pointer; outline: none; background-repeat: no-repeat; background-position: right 8px center; background-size: 10px; transition: filter .15s, opacity .2s; }
-    .status-select:hover { filter: brightness(.93); }
-    .status-select:disabled { opacity: .6; cursor: default; }
-    .status-select.s-finalizado { background-color: #d4edd4; color: #2e7d32; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232e7d32' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); }
-    .status-select.s-pendente   { background-color: #fff3cd; color: #856404; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23856404' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); }
-    .status-select.s-cancelado  { background-color: #fde8e8; color: #b71c1c; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23b71c1c' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); }
-
-    .products-expand { background: var(--inner-bg); padding: 16px 24px 18px; display: none; }
-    .products-expand.visible { display: block; }
-    .prod-header { display: grid; grid-template-columns: 110px 1fr 100px 130px 120px; padding: 6px 0 8px; border-bottom: 1px solid var(--card-border); margin-bottom: 6px; }
-    .prod-header span { font-family: var(--font-body); font-size: .76rem; color: var(--text-mid); text-align: center; }
-    .prod-row { display: grid; grid-template-columns: 110px 1fr 100px 130px 120px; padding: 7px 0; }
-    .prod-row span { text-align: center; font-family: var(--font-body); font-size: .86rem; color: var(--text-dark); }
-    .prod-loading { text-align: center; padding: 14px; color: var(--text-mid); font-size: .85rem; font-family: var(--font-body); }
-
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(92,46,40,.4); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
-    .modal-overlay.visible { display: flex; }
-    .modal { background: var(--bg); border-radius: 20px; border: 2px solid var(--card-border); padding: 40px 44px 36px; width: 700px; max-width: 95vw; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 16px 56px rgba(92,46,40,.22); animation: modalIn .22s ease; }
-    @keyframes modalIn { from { opacity:0; transform:translateY(-16px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
-    .modal h2 { font-family: var(--font-display); font-size: 1.7rem; color: var(--text-dark); margin-bottom: 26px; letter-spacing: .02em; }
-    .modal-close { position: absolute; top: 18px; right: 18px; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); border: none; color: #fff; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s, transform .15s; box-shadow: 0 2px 8px rgba(192,84,78,.3); }
-    .modal-close:hover { background: #a3433d; transform: rotate(90deg) scale(1.08); }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
-    .form-group { display: flex; flex-direction: column; gap: 5px; }
-    .form-group.full { grid-column: 1 / -1; }
-    .form-group label { font-family: var(--font-body); font-size: .8rem; color: var(--text-mid); }
-    .form-group input, .form-group select { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 10px; padding: 10px 14px; font-family: var(--font-body); font-size: .92rem; color: var(--text-dark); outline: none; transition: border-color .15s, box-shadow .15s; }
-    .form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192,84,78,.12); }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 26px; }
-    .btn-secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
-    .btn-secondary:hover { background: rgba(192,84,78,.08); filter: none; }
-
-    .products-section { margin-top: 22px; border-top: 1.5px solid var(--card-border); padding-top: 18px; }
-    .products-section h3 { font-family: var(--font-display); font-size: 1.05rem; color: var(--text-dark); margin-bottom: 14px; letter-spacing: .02em; }
-    .prod-col-header { display: grid; grid-template-columns: 1fr 80px 130px 40px; gap: 8px; padding: 0 0 8px; border-bottom: 1px solid var(--card-border); margin-bottom: 10px; }
-    .prod-col-header span { font-family: var(--font-body); font-size: .75rem; color: var(--text-mid); text-align: center; }
-    .prod-entry { display: grid; grid-template-columns: 1fr 80px 130px 40px; gap: 8px; align-items: center; margin-bottom: 10px; }
-    .prod-entry select, .prod-entry input { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 9px; padding: 9px 12px; font-family: var(--font-body); font-size: .88rem; color: var(--text-dark); outline: none; width: 100%; transition: border-color .15s, box-shadow .15s; }
-    .prod-entry select:focus, .prod-entry input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192,84,78,.1); }
-    .btn-remove { width: 32px; height: 32px; background: #fde8e8; border: 1.5px solid #f5c0c0; border-radius: 50%; color: #b71c1c; font-size: .85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 700; transition: background .14s; }
-    .btn-remove:hover { background: #f9c9c9; }
-    .btn-add-product { background: none; border: 1.5px dashed var(--card-border); border-radius: 10px; color: var(--text-mid); padding: 9px 16px; cursor: pointer; font-family: var(--font-body); font-size: .88rem; width: 100%; transition: background .14s; margin-top: 4px; }
-    .btn-add-product:hover { background: var(--card-bg); }
-
-    .confirm-modal { background: var(--bg); border-radius: 20px; border: 2px solid var(--card-border); padding: 44px 44px 36px; width: 400px; max-width: 95vw; text-align: center; position: relative; box-shadow: 0 16px 56px rgba(92,46,40,.22); animation: modalIn .22s ease; }
-    .confirm-modal p { font-family: var(--font-body); font-size: .97rem; color: var(--text-dark); margin-bottom: 28px; line-height: 1.6; }
-    .confirm-modal .modal-actions { justify-content: center; }
-    .btn-danger { background: #b71c1c; }
-    .btn-danger:hover { filter: brightness(.88); }
-
-    .empty-state { text-align: center; padding: 48px 20px; color: var(--text-mid); font-family: var(--font-body); font-size: .95rem; }
-
-    .toast { position: fixed; bottom: 28px; right: 28px; background: #5C2E28; color: #fff; font-family: var(--font-body); font-size: .9rem; padding: 12px 22px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.2); opacity: 0; transform: translateY(12px); transition: opacity .3s, transform .3s; z-index: 999; pointer-events: none; }
-    .toast.show  { opacity: 1; transform: translateY(0); }
-    .toast.error { background: #b71c1c; }
-  </style>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
@@ -126,10 +15,10 @@
   <nav>
     <a href="index.html">Relatórios</a>
     <a href="pedidos.html" class="active">Pedidos</a>
-    <a href="#">Insumos</a>
-    <a href="#">Produtos</a>
+    <a href="insumos.html">Insumos</a>
+    <a href="produtos.html">Produtos</a>
     <a href="clientes.html">Clientes</a>
-    <a href="#">Fornecedores</a>
+    <a href="fornecedores.html">Fornecedores</a>
     <a href="#">Balanço</a>
   </nav>
 </aside>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Produtos – Casa Personalizada</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .tbl-produtos { grid-template-columns: 70px 1fr 120px 130px 140px 80px; }
+  </style>
+</head>
+<body>
+<div class="loading-bar" id="loadingBar"></div>
+<aside class="sidebar">
+  <div class="logo-svg-wrap"><img src="img/logo.png" alt="Logo" style="width:150px;height:80px;object-fit:contain;"/></div>
+  <nav>
+    <a href="index.html">Relatórios</a>
+    <a href="pedidos.html">Pedidos</a>
+    <a href="insumos.html">Insumos</a>
+    <a href="produtos.html" class="active">Produtos</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="fornecedores.html">Fornecedores</a>
+    <a href="#">Balanço</a>
+  </nav>
+</aside>
+<main class="main">
+  <h1 class="page-title">Produtos</h1>
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#7A4A40" stroke-width="1.8"/><path d="M10.5 10.5L14 14" stroke="#7A4A40" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" id="searchInput" placeholder="Buscar produto…" oninput="filterData()"/>
+    </div>
+    <button class="btn" onclick="openNewModal()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
+      Novo Produto
+    </button>
+  </div>
+  <div class="table-container">
+    <div class="tbl-header tbl-produtos">
+      <span class="left">ID</span><span class="left">Nome</span><span>Preço Unit.</span><span>Técnica</span><span>Insumo</span><span>Ações</span>
+    </div>
+    <div id="data-list"><div class="empty-state">Carregando…</div></div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="mainModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('mainModal')">✕</button>
+    <h2 id="modalTitle">Novo Produto</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nome *</label>
+        <input type="text" id="f-nome" placeholder="Nome do produto"/>
+      </div>
+      <div class="form-group">
+        <label>Preço Unitário (R$)</label>
+        <input type="number" id="f-preco" placeholder="0,00" step="0.01" min="0"/>
+      </div>
+      <div class="form-group">
+        <label>Técnica</label>
+        <input type="text" id="f-tecnica" placeholder="Ex: Sublimação, Bordado…"/>
+      </div>
+      <div class="form-group">
+        <label>Insumo base</label>
+        <select id="f-insumo"><option value="">Nenhum</option></select>
+      </div>
+      <div class="form-group">
+        <label>Custo (R$)</label>
+        <input type="number" id="f-custo" placeholder="0,00" step="0.01" min="0"/>
+      </div>
+      <div class="form-group full">
+        <label>Detalhamento de Custo</label>
+        <textarea id="f-detalhe" rows="2" placeholder="Descreva os custos…"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('mainModal')">Cancelar</button>
+      <button class="btn" id="btnSalvar" onclick="saveItem()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-modal">
+    <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+    <p>Excluir o produto</p>
+    <span class="highlight" id="confirmNome"></span>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancelar</button>
+      <button class="btn btn-danger" id="btnDel" onclick="deleteItem()">Excluir</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script>
+let allData=[], filtered=[], insumos=[], editingId=null, deletingId=null, currentPage=1;
+const PAGE=15;
+
+async function loadAll() {
+  loadStart();
+  try {
+    const [prod, ins] = await Promise.all([
+      supa('produtos?select=*&order=nome.asc'),
+      supa('insumos?select=id_insumo,nome&order=nome.asc'),
+    ]);
+    allData=prod||[]; insumos=ins||[];
+    filtered=[...allData];
+    populateInsumoSelect();
+    render();
+  } catch(e){ toast('Erro: '+e.message,true); }
+  loadDone();
+}
+
+function populateInsumoSelect(selId='') {
+  document.getElementById('f-insumo').innerHTML=
+    '<option value="">Nenhum</option>'+insumos.map(i=>`<option value="${i.id_insumo}" ${i.id_insumo==selId?'selected':''}>${i.nome}</option>`).join('');
+}
+
+function getInsumoNome(id){ const i=insumos.find(x=>x.id_insumo===id); return i?i.nome:'—'; }
+
+function filterData() {
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  filtered=q?allData.filter(x=>x.nome.toLowerCase().includes(q)||(x.tecnica||'').toLowerCase().includes(q)):[...allData];
+  currentPage=1; render();
+}
+
+function render() {
+  const el=document.getElementById('data-list');
+  if(!filtered.length){ el.innerHTML='<div class="empty-state">Nenhum produto encontrado.</div>'; document.getElementById('pagination').innerHTML=''; return; }
+  const start=(currentPage-1)*PAGE, page=filtered.slice(start,start+PAGE);
+  el.innerHTML=page.map(r=>`
+    <div class="data-row tbl-produtos">
+      <span class="left" style="color:var(--text-mid);font-size:.8rem">#${r.id_produto}</span>
+      <span class="left">${r.nome}</span>
+      <span>R$ ${fmtMoney(r.preco_unitario)}</span>
+      <span>${r.tecnica||'—'}</span>
+      <span>${getInsumoNome(r.id_insumo)}</span>
+      <span class="row-actions">
+        <button class="btn-icon btn-edit-icon" onclick="openEdit(${r.id_produto})" title="Editar"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5L11.5 4.5L5 11H3v-2L9.5 2.5Z" stroke="#856404" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+        <button class="btn-icon btn-del-icon" onclick="openDel(${r.id_produto},'${r.nome.replace(/'/g,"\\'")}')}" title="Excluir"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </span>
+    </div>`).join('');
+  buildPagination('pagination', currentPage, filtered.length, PAGE, 'goPage');
+}
+
+function goPage(p){ const t=Math.ceil(filtered.length/PAGE); if(p<1||p>t)return; currentPage=p; render(); }
+
+function openModal(id){ document.getElementById(id).classList.add('visible'); }
+function closeModal(id){ document.getElementById(id).classList.remove('visible'); if(id==='mainModal')editingId=null; }
+
+function openNewModal() {
+  editingId=null;
+  document.getElementById('modalTitle').textContent='Novo Produto';
+  ['f-nome','f-preco','f-tecnica','f-custo','f-detalhe'].forEach(i=>document.getElementById(i).value='');
+  populateInsumoSelect();
+  openModal('mainModal');
+}
+
+function openEdit(id) {
+  const r=allData.find(x=>x.id_produto===id); if(!r)return;
+  editingId=id;
+  document.getElementById('modalTitle').textContent='Editar Produto';
+  document.getElementById('f-nome').value=r.nome||'';
+  document.getElementById('f-preco').value=r.preco_unitario||'';
+  document.getElementById('f-tecnica').value=r.tecnica||'';
+  document.getElementById('f-custo').value=r.custo||'';
+  document.getElementById('f-detalhe').value=r.detalhamento_custo||'';
+  populateInsumoSelect(r.id_insumo);
+  openModal('mainModal');
+}
+
+function openDel(id,nome){ deletingId=id; document.getElementById('confirmNome').textContent=nome; openModal('confirmModal'); }
+
+async function saveItem() {
+  const nome=document.getElementById('f-nome').value.trim();
+  if(!nome){ toast('Nome obrigatório.',true); return; }
+  const payload={
+    nome,
+    preco_unitario: parseFloat(document.getElementById('f-preco').value)||0,
+    tecnica: document.getElementById('f-tecnica').value.trim()||null,
+    custo: parseFloat(document.getElementById('f-custo').value)||0,
+    detalhamento_custo: document.getElementById('f-detalhe').value.trim()||null,
+    id_insumo: parseInt(document.getElementById('f-insumo').value)||null,
+  };
+  const btn=document.getElementById('btnSalvar'); btn.disabled=true; btn.textContent='Salvando…'; loadStart();
+  try {
+    if(editingId){ await supa(`produtos?id_produto=eq.${editingId}`,{method:'PATCH',body:JSON.stringify(payload)}); toast('Produto atualizado!'); }
+    else { await supa('produtos',{method:'POST',body:JSON.stringify(payload)}); toast('Produto criado!'); }
+    closeModal('mainModal'); await loadAll();
+  } catch(e){ toast('Erro: '+e.message,true); }
+  btn.disabled=false; btn.textContent='Salvar'; loadDone();
+}
+
+async function deleteItem() {
+  const btn=document.getElementById('btnDel'); btn.disabled=true; btn.textContent='Excluindo…'; loadStart();
+  try {
+    await supa(`produtos?id_produto=eq.${deletingId}`,{method:'DELETE'});
+    toast('Produto excluído.'); closeModal('confirmModal'); await loadAll();
+  } catch(e){ toast('Erro: '+e.message,true); }
+  btn.disabled=false; btn.textContent='Excluir'; loadDone();
+}
+loadAll();
+</script>
+</body>
+</html>
