@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Balanço Mensal – Casa Personalizada</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .month-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; flex-wrap: wrap; }
+    .month-bar label { font-family: var(--font-body); font-size: .9rem; color: var(--text-mid); }
+    .month-bar input[type=month] { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 50px; padding: 8px 18px; font-family: var(--font-body); font-size: .9rem; color: var(--text-dark); outline: none; cursor: pointer; }
+    .month-bar input[type=month]:focus { border-color: var(--accent); }
+
+    /* HERO CARD - Capital disponível */
+    .hero-card { background: linear-gradient(135deg, #C0544E 0%, #a3433d 100%); border-radius: 22px; padding: 36px 44px; color: #fff; margin-bottom: 32px; box-shadow: 0 12px 32px rgba(192,84,78,.18); position: relative; overflow: hidden; }
+    .hero-card::before { content: ''; position: absolute; top: -40px; right: -40px; width: 220px; height: 220px; background: rgba(255,255,255,.08); border-radius: 50%; }
+    .hero-card::after { content: ''; position: absolute; bottom: -60px; left: -30px; width: 160px; height: 160px; background: rgba(255,255,255,.05); border-radius: 50%; }
+    .hero-card .label { font-family: var(--font-body); font-size: .9rem; opacity: .9; margin-bottom: 8px; position: relative; }
+    .hero-card .value { font-family: var(--font-display); font-size: 3.4rem; letter-spacing: .02em; position: relative; line-height: 1.1; }
+    .hero-card .formula { font-family: var(--font-body); font-size: .82rem; opacity: .82; margin-top: 12px; position: relative; }
+
+    /* KPI Grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 28px; }
+    .kpi-card { background: var(--card-bg); border-radius: 16px; border: 2px solid var(--card-border); padding: 22px 24px; text-align: left; position: relative; transition: transform .15s; }
+    .kpi-card:hover { transform: translateY(-2px); }
+    .kpi-label { font-family: var(--font-body); font-size: .78rem; color: var(--text-mid); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .05em; }
+    .kpi-value { font-family: var(--font-display); font-size: 1.8rem; color: var(--text-dark); letter-spacing: .01em; line-height: 1.1; }
+    .kpi-sub { font-family: var(--font-body); font-size: .76rem; color: var(--text-mid); margin-top: 6px; }
+    .kpi-card.income .kpi-value { color: #2e7d32; }
+    .kpi-card.expense .kpi-value { color: #b71c1c; }
+    .kpi-card.profit-pos .kpi-value { color: #2e7d32; }
+    .kpi-card.profit-neg .kpi-value { color: #b71c1c; }
+    .kpi-card.neutral .kpi-value { color: var(--text-dark); }
+
+    /* Section box */
+    .section { background: var(--card-bg); border-radius: 18px; border: 2px solid var(--card-border); padding: 26px 32px; margin-bottom: 24px; }
+    .section h2 { font-family: var(--font-display); font-size: 1.35rem; color: var(--text-dark); margin-bottom: 20px; letter-spacing: .02em; display: flex; justify-content: space-between; align-items: baseline; }
+    .section h2 .total { font-family: var(--font-body); font-size: .95rem; color: var(--text-mid); }
+    .section h2 .total b { color: var(--accent); font-size: 1.1rem; }
+    .breakdown-row { display: grid; grid-template-columns: 1fr 140px; padding: 9px 0; border-bottom: 1px solid rgba(192,135,122,.2); align-items: center; }
+    .breakdown-row:last-child { border-bottom: none; }
+    .breakdown-row .b-nome { font-family: var(--font-body); font-size: .92rem; color: var(--text-dark); }
+    .breakdown-row .b-valor { font-family: var(--font-body); font-size: .92rem; color: var(--text-dark); text-align: right; }
+    .breakdown-row.total-row { border-top: 2px solid var(--card-border); border-bottom: none; padding-top: 12px; margin-top: 4px; }
+    .breakdown-row.total-row .b-nome,
+    .breakdown-row.total-row .b-valor { font-family: var(--font-display); font-size: 1.05rem; color: var(--accent); }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+
+    .empty-detail { padding: 16px; text-align: center; color: var(--text-mid); font-size: .88rem; font-family: var(--font-body); }
+  </style>
+</head>
+<body>
+<div class="loading-bar" id="loadingBar"></div>
+<aside class="sidebar">
+  <div class="logo-svg-wrap"><img src="img/logo.png" alt="Logo" style="width:150px;height:80px;object-fit:contain;"/></div>
+  <nav>
+    <a href="relatorio.html">Relatórios</a>
+    <a href="pedidos.html">Pedidos</a>
+    <a href="insumos.html">Insumos</a>
+    <a href="produtos.html">Produtos</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="fornecedores.html">Fornecedores</a>
+    <a href="balanco.html" class="active">Balanço</a>
+    <a href="financeiro.html">Financeiro</a>
+  </nav>
+</aside>
+<main class="main">
+  <h1 class="page-title">Balanço Mensal</h1>
+
+  <div class="month-bar">
+    <label>Mês de referência:</label>
+    <input type="month" id="mesRef" onchange="loadBalanco()"/>
+  </div>
+
+  <!-- HERO: Capital disponível -->
+  <div class="hero-card">
+    <div class="label">Capital disponível para compras (próximo mês)</div>
+    <div class="value" id="k-capital">R$ 0,00</div>
+    <div class="formula">CPV + Reinvestimento — orçamento estimado para reposição de estoque, embalagens e insumos.</div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card income">
+      <div class="kpi-label">Faturamento</div>
+      <div class="kpi-value" id="k-faturamento">R$ 0,00</div>
+      <div class="kpi-sub">pedidos finalizados no mês</div>
+    </div>
+    <div class="kpi-card expense">
+      <div class="kpi-label">CPV</div>
+      <div class="kpi-value" id="k-cpv">R$ 0,00</div>
+      <div class="kpi-sub">custo dos produtos vendidos</div>
+    </div>
+    <div class="kpi-card neutral">
+      <div class="kpi-label">Reinvestimento</div>
+      <div class="kpi-value" id="k-reinvest">R$ 0,00</div>
+      <div class="kpi-sub"><span id="k-reinvest-taxa">0%</span> sobre faturamento</div>
+    </div>
+    <div class="kpi-card" id="k-lucro-card">
+      <div class="kpi-label">Lucro Operacional</div>
+      <div class="kpi-value" id="k-lucro">R$ 0,00</div>
+      <div class="kpi-sub" id="k-lucro-pct">— % do faturamento</div>
+    </div>
+  </div>
+
+  <!-- DETALHES: Custos -->
+  <div class="two-col">
+    <div class="section">
+      <h2>Custos Fixos <span class="total">Total: <b id="t-fixos">R$ 0,00</b></span></h2>
+      <div id="d-fixos"><div class="empty-detail">Carregando…</div></div>
+    </div>
+    <div class="section">
+      <h2>Custos Variáveis <span class="total">Total: <b id="t-vars">R$ 0,00</b></span></h2>
+      <div id="d-vars"><div class="empty-detail">Carregando…</div></div>
+    </div>
+  </div>
+
+  <!-- DEMONSTRATIVO -->
+  <div class="section">
+    <h2>Demonstrativo de Resultado</h2>
+    <div class="breakdown-row"><span class="b-nome">(+) Faturamento (pedidos finalizados)</span><span class="b-valor" id="dr-fat">R$ 0,00</span></div>
+    <div class="breakdown-row"><span class="b-nome">(−) CPV (custo dos produtos vendidos)</span><span class="b-valor" id="dr-cpv">R$ 0,00</span></div>
+    <div class="breakdown-row"><span class="b-nome">(−) Reinvestimento</span><span class="b-valor" id="dr-rein">R$ 0,00</span></div>
+    <div class="breakdown-row"><span class="b-nome">(−) Custos Fixos</span><span class="b-valor" id="dr-fixos">R$ 0,00</span></div>
+    <div class="breakdown-row"><span class="b-nome">(−) Custos Variáveis</span><span class="b-valor" id="dr-vars">R$ 0,00</span></div>
+    <div class="breakdown-row total-row"><span class="b-nome">(=) Lucro Operacional</span><span class="b-valor" id="dr-lucro">R$ 0,00</span></div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script>
+if (!requireAuth()) throw new Error("redirect");
+renderUserBar();
+
+function mesAtualInput() {
+  const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function mesRangeFiltro(mesInput) {
+  // mesInput = "yyyy-mm"
+  const [y, m] = mesInput.split('-').map(Number);
+  const inicio = `${y}-${String(m).padStart(2,'0')}-01`;
+  const fimMes = new Date(y, m, 0).getDate(); // último dia
+  const fim = `${y}-${String(m).padStart(2,'0')}-${String(fimMes).padStart(2,'0')}`;
+  return { inicio, fim };
+}
+
+async function loadBalanco() {
+  const mes = document.getElementById('mesRef').value || mesAtualInput();
+  document.getElementById('mesRef').value = mes;
+  const { inicio, fim } = mesRangeFiltro(mes);
+  const dataMes = `${mes}-01`;
+
+  loadStart();
+  try {
+    const [pedidos, prodPedido, produtos, fixos, vars, paramsArr] = await Promise.all([
+      supa(`pedidos?select=id_pedido,valor,status,data_pedido&status=eq.Finalizado&data_pedido=gte.${inicio}&data_pedido=lte.${fim}`),
+      supa('produto_pedido?select=id_pedido,id_produto,quantidade,preco_total'),
+      supa('produtos?select=id_produto,nome,custo,preco_unitario'),
+      supa('custos_fixos?select=*&order=nome.asc'),
+      supa('custos_variaveis?select=*&order=nome.asc'),
+      supa(`parametros_financeiros?mes_referencia=eq.${dataMes}`),
+    ]);
+
+    // ── FATURAMENTO ──
+    const pedidosIds = new Set((pedidos || []).map(p => p.id_pedido));
+    const faturamento = (pedidos || []).reduce((s,p) => s + (p.valor || 0), 0);
+
+    // ── CPV ──
+    // Soma de (produtos.custo × quantidade) dos produto_pedido cujos id_pedido caem no mês
+    const pp = (prodPedido || []).filter(x => pedidosIds.has(x.id_pedido));
+    const cpv = pp.reduce((s, x) => {
+      const prod = (produtos || []).find(p => p.id_produto === x.id_produto);
+      const custoUnit = prod ? (prod.custo || 0) : 0;
+      return s + (custoUnit * (x.quantidade || 0));
+    }, 0);
+
+    // ── PARÂMETROS DO MÊS ──
+    const params = (paramsArr && paramsArr[0]) || { taxa_reinvestimento: 0, margem_lucro_desejada: 0 };
+    const taxaReinvest = parseFloat(params.taxa_reinvestimento) || 0;
+    const reinvestimento = faturamento * (taxaReinvest / 100);
+
+    // ── CUSTOS ──
+    const totFixos = (fixos || []).reduce((s,c) => s + (c.valor || 0), 0);
+    const totVars  = (vars  || []).reduce((s,c) => s + (c.valor || 0), 0);
+
+    // ── LUCRO E CAPITAL ──
+    const lucro = faturamento - cpv - reinvestimento - totFixos - totVars;
+    const capital = cpv + reinvestimento;
+
+    // ── RENDER KPIs ──
+    document.getElementById('k-capital').textContent      = 'R$ ' + fmtMoney(capital);
+    document.getElementById('k-faturamento').textContent  = 'R$ ' + fmtMoney(faturamento);
+    document.getElementById('k-cpv').textContent          = 'R$ ' + fmtMoney(cpv);
+    document.getElementById('k-reinvest').textContent     = 'R$ ' + fmtMoney(reinvestimento);
+    document.getElementById('k-reinvest-taxa').textContent = taxaReinvest.toFixed(1).replace('.', ',') + '%';
+    document.getElementById('k-lucro').textContent        = 'R$ ' + fmtMoney(lucro);
+
+    const pctLucro = faturamento > 0 ? (lucro / faturamento * 100) : 0;
+    document.getElementById('k-lucro-pct').textContent = pctLucro.toFixed(1).replace('.', ',') + '% do faturamento';
+    const lucroCard = document.getElementById('k-lucro-card');
+    lucroCard.className = 'kpi-card ' + (lucro > 0 ? 'profit-pos' : lucro < 0 ? 'profit-neg' : 'neutral');
+
+    // ── BREAKDOWN ──
+    renderBreakdown('d-fixos', fixos || [], 't-fixos');
+    renderBreakdown('d-vars',  vars  || [], 't-vars');
+
+    // ── DEMONSTRATIVO ──
+    document.getElementById('dr-fat').textContent   = 'R$ ' + fmtMoney(faturamento);
+    document.getElementById('dr-cpv').textContent   = '− R$ ' + fmtMoney(cpv);
+    document.getElementById('dr-rein').textContent  = '− R$ ' + fmtMoney(reinvestimento);
+    document.getElementById('dr-fixos').textContent = '− R$ ' + fmtMoney(totFixos);
+    document.getElementById('dr-vars').textContent  = '− R$ ' + fmtMoney(totVars);
+    document.getElementById('dr-lucro').textContent = (lucro < 0 ? '− R$ ' : 'R$ ') + fmtMoney(Math.abs(lucro));
+    document.getElementById('dr-lucro').style.color = lucro >= 0 ? '#2e7d32' : '#b71c1c';
+
+  } catch(e) {
+    toast('Erro: ' + e.message, true);
+  }
+  loadDone();
+}
+
+function renderBreakdown(elId, items, totalId) {
+  const el = document.getElementById(elId);
+  if (!items.length) {
+    el.innerHTML = '<div class="empty-detail">Nenhum custo cadastrado.<br><a href="financeiro.html" style="color:var(--accent);text-decoration:none;font-size:.84rem">→ Cadastrar em Parâmetros Financeiros</a></div>';
+    document.getElementById(totalId).textContent = 'R$ 0,00';
+    return;
+  }
+  const tot = items.reduce((s,c) => s + (c.valor || 0), 0);
+  el.innerHTML = items.map(c => `
+    <div class="breakdown-row">
+      <span class="b-nome">${c.nome}</span>
+      <span class="b-valor">R$ ${fmtMoney(c.valor)}</span>
+    </div>
+  `).join('') + `<div class="breakdown-row total-row"><span class="b-nome">Total</span><span class="b-valor">R$ ${fmtMoney(tot)}</span></div>`;
+  document.getElementById(totalId).textContent = 'R$ ' + fmtMoney(tot);
+}
+
+document.getElementById('mesRef').value = mesAtualInput();
+loadBalanco();
+</script>
+</body>
+</html>

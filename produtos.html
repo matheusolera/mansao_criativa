@@ -11,13 +11,14 @@
 <aside class="sidebar">
   <div class="logo-svg-wrap"><img src="img/logo.png" alt="Logo" style="width:150px;height:80px;object-fit:contain;"/></div>
   <nav>
-    <a href="index.html">Relatórios</a>
+    <a href="relatorio.html">Relatórios</a>
     <a href="pedidos.html">Pedidos</a>
     <a href="insumos.html">Insumos</a>
     <a href="produtos.html" class="active">Produtos</a>
     <a href="clientes.html">Clientes</a>
     <a href="fornecedores.html">Fornecedores</a>
-    <a href="#">Balanço</a>
+    <a href="balanco.html">Balanço</a>
+    <a href="financeiro.html">Financeiro</a>
   </nav>
 </aside>
 <main class="main">
@@ -77,6 +78,9 @@
 <div class="toast" id="toast"></div>
 <script src="shared.js"></script>
 <script>
+if (!requireAuth()) throw new Error("redirect");
+renderUserBar();
+
 let allData=[], filtered=[], insumos=[], editingId=null, deletingId=null, currentPage=1;
 const PAGE=15;
 

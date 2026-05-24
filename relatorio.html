@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Relatórios – Casa Personalizada</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .chart-card { background: var(--card-bg); border-radius: 18px; border: 2px solid var(--card-border); padding: 24px 28px 20px; }
+    .chart-card h2 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 400; color: var(--text-dark); margin-bottom: 18px; text-align: center; letter-spacing: .02em; }
+    .chart-card canvas { max-height: 220px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; margin-bottom: 32px; }
+    .kpi-card { background: var(--card-bg); border-radius: 16px; border: 2px solid var(--card-border); padding: 20px 24px; text-align: center; }
+    .kpi-label { font-family: var(--font-body); font-size: .78rem; color: var(--text-mid); margin-bottom: 8px; }
+    .kpi-value { font-family: var(--font-display); font-size: 1.8rem; color: var(--text-dark); letter-spacing: .01em; }
+    .kpi-sub   { font-family: var(--font-body); font-size: .75rem; color: var(--text-mid); margin-top: 4px; }
+  </style>
+</head>
+<body>
+<div class="loading-bar" id="loadingBar"></div>
+<aside class="sidebar">
+  <div class="logo-svg-wrap"><img src="img/logo.png" alt="Logo" style="width:150px;height:80px;object-fit:contain;"/></div>
+  <nav>
+    <a href="relatorio.html" class="active">Relatórios</a>
+    <a href="pedidos.html">Pedidos</a>
+    <a href="insumos.html">Insumos</a>
+    <a href="produtos.html">Produtos</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="fornecedores.html">Fornecedores</a>
+    <a href="balanco.html">Balanço</a>
+    <a href="financeiro.html">Financeiro</a>
+  </nav>
+</aside>
+<main class="main">
+  <h1 class="page-title">Relatórios</h1>
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-label">Receita Total</div><div class="kpi-value" id="kpi-receita">—</div><div class="kpi-sub">todos os pedidos</div></div>
+    <div class="kpi-card"><div class="kpi-label">Pedidos</div><div class="kpi-value" id="kpi-pedidos">—</div><div class="kpi-sub">cadastrados</div></div>
+    <div class="kpi-card"><div class="kpi-label">Clientes</div><div class="kpi-value" id="kpi-clientes">—</div><div class="kpi-sub">cadastrados</div></div>
+    <div class="kpi-card"><div class="kpi-label">Ticket Médio</div><div class="kpi-value" id="kpi-ticket">—</div><div class="kpi-sub">por pedido</div></div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card"><h2>Receita por Mês</h2><canvas id="chartMensal"></canvas></div>
+    <div class="chart-card"><h2>Pedidos por Status</h2><canvas id="chartStatus"></canvas></div>
+    <div class="chart-card"><h2>Top Produtos Vendidos</h2><canvas id="chartProdutos"></canvas></div>
+    <div class="chart-card"><h2>Top Clientes por Receita</h2><canvas id="chartClientes"></canvas></div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script>
+if (!requireAuth()) throw new Error("redirect");
+renderUserBar();
+
+function barCfg(labels, data, opts={}) {
+  return {
+    type: opts.type||'bar',
+    data: { labels, datasets:[{ data, backgroundColor: opts.colors||'#7A4A3A', borderColor:'#5C2E28', borderWidth:1.5, borderRadius:4 }] },
+    options: { responsive:true, plugins:{ legend:{display:opts.legend||false}, tooltip:{backgroundColor:'#5C2E28',titleColor:'#F7F0E8',bodyColor:'#F7F0E8',titleFont:{family:'Bree Serif'},bodyFont:{family:'Bree Serif'}} },
+      scales: opts.type==='doughnut' ? {} : { x:{ticks:{color:'#7A4A40',font:{family:'Bree Serif',size:11}},grid:{color:'rgba(192,135,122,.2)'}}, y:{ticks:{color:'#7A4A40',font:{family:'Bree Serif',size:11}},grid:{color:'rgba(192,135,122,.2)'}} } }
+  };
+}
+async function loadReports() {
+  loadStart();
+  try {
+    const [pedidos, clientes, prodPedido] = await Promise.all([
+      supa('pedidos?select=id_pedido,valor,status,data_pedido,id_cliente'),
+      supa('clientes?select=id_cliente,nome,sobrenome'),
+      supa('produto_pedido?select=id_pedido,id_produto,quantidade,preco_total,produtos(nome)'),
+    ]);
+    const totalReceita = pedidos.reduce((s,p)=>s+(p.valor||0),0);
+    const ticket = pedidos.length ? totalReceita/pedidos.length : 0;
+    document.getElementById('kpi-receita').textContent  = 'R$ '+fmtMoney(totalReceita);
+    document.getElementById('kpi-pedidos').textContent  = pedidos.length;
+    document.getElementById('kpi-clientes').textContent = clientes.length;
+    document.getElementById('kpi-ticket').textContent   = 'R$ '+fmtMoney(ticket);
+
+    // Receita por mês
+    const byMonth={};
+    pedidos.forEach(p=>{ if(!p.data_pedido)return; const k=p.data_pedido.slice(0,7); byMonth[k]=(byMonth[k]||0)+(p.valor||0); });
+    const mKeys=Object.keys(byMonth).sort().slice(-8);
+    new Chart(document.getElementById('chartMensal'), barCfg(mKeys.map(k=>{const[y,m]=k.split('-');return m+'/'+y.slice(2);}), mKeys.map(k=>byMonth[k])));
+
+    // Status
+    const byStatus={};
+    pedidos.forEach(p=>{ byStatus[p.status||'N/A']=(byStatus[p.status||'N/A']||0)+1; });
+    const sCols={'Finalizado':'#6aaa6a','Pendente':'#e6c84a','Cancelado':'#d9534f'};
+    new Chart(document.getElementById('chartStatus'),{type:'doughnut',data:{labels:Object.keys(byStatus),datasets:[{data:Object.values(byStatus),backgroundColor:Object.keys(byStatus).map(s=>sCols[s]||'#C0877A'),borderColor:'#F7F0E8',borderWidth:2}]},options:{responsive:true,plugins:{legend:{display:true,position:'bottom',labels:{font:{family:'Bree Serif',size:12},color:'#5C2E28',padding:16}},tooltip:{backgroundColor:'#5C2E28',titleColor:'#F7F0E8',bodyColor:'#F7F0E8'}}}});
+
+    // Top produtos
+    const byProd={};
+    prodPedido.forEach(p=>{ const n=p.produtos?.nome||('#'+p.id_produto); byProd[n]=(byProd[n]||0)+(p.preco_total||0); });
+    const topP=Object.entries(byProd).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    new Chart(document.getElementById('chartProdutos'), barCfg(topP.map(x=>x[0]),topP.map(x=>x[1])));
+
+    // Top clientes
+    const byCli={};
+    pedidos.forEach(p=>{ const c=clientes.find(x=>x.id_cliente===p.id_cliente); const n=c?`${c.nome} ${c.sobrenome||''}`.trim():('#'+p.id_cliente); byCli[n]=(byCli[n]||0)+(p.valor||0); });
+    const topC=Object.entries(byCli).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    new Chart(document.getElementById('chartClientes'), barCfg(topC.map(x=>x[0]),topC.map(x=>x[1])));
+  } catch(e) { toast('Erro: '+e.message,true); }
+  loadDone();
+}
+loadReports();
+</script>
+</body>
+</html>

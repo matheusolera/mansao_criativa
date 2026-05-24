@@ -90,7 +90,7 @@
 // Se já está logado, redireciona para o dashboard
 const existing = getSession();
 if (existing && !isTokenExpired(existing)) {
-  window.location.href = 'relatorio.html';
+  window.location.href = 'index.html';
 }
 
 function toggleEye() {
@@ -123,7 +123,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   try {
     await loginEmail(email, senha);
     toast('Login realizado!');
-    setTimeout(() => window.location.href = 'relatorio.html', 400);
+    setTimeout(() => window.location.href = 'index.html', 400);
   } catch(err) {
     const msg = err.message || 'Falha no login';
     if (msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('credentials')) {

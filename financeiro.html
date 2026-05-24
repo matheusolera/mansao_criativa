@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Parâmetros Financeiros – Casa Personalizada</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .config-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; margin-bottom: 28px; }
+    .config-card { background: var(--card-bg); border-radius: 18px; border: 2px solid var(--card-border); padding: 28px 32px; }
+    .config-card h2 { font-family: var(--font-display); font-size: 1.35rem; color: var(--text-dark); margin-bottom: 20px; letter-spacing: .02em; }
+    .config-card .sub-info { font-size: .82rem; color: var(--text-mid); margin-top: -14px; margin-bottom: 18px; }
+    .input-money { position: relative; }
+    .input-money .prefix { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-mid); font-size: .9rem; pointer-events: none; }
+    .input-money .suffix { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-mid); font-size: .9rem; pointer-events: none; }
+    .input-money input.pref { padding-left: 38px; }
+    .input-money input.suf  { padding-right: 38px; }
+    .month-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .month-bar label { font-family: var(--font-body); font-size: .85rem; color: var(--text-mid); }
+    .month-bar input[type=month] { background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: 50px; padding: 8px 18px; font-family: var(--font-body); font-size: .9rem; color: var(--text-dark); outline: none; cursor: pointer; }
+    .month-bar input[type=month]:focus { border-color: var(--accent); }
+
+    .cost-list { background: var(--card-bg); border-radius: 18px; border: 2px solid var(--card-border); padding: 28px 32px; }
+    .cost-list h2 { font-family: var(--font-display); font-size: 1.35rem; color: var(--text-dark); margin-bottom: 20px; letter-spacing: .02em; display: flex; justify-content: space-between; align-items: center; }
+    .cost-list h2 .total { font-family: var(--font-body); font-size: .95rem; color: var(--text-mid); }
+    .cost-list h2 .total b { color: var(--accent); font-size: 1.1rem; }
+    .cost-grid-header { display: grid; grid-template-columns: 1fr 160px 90px; gap: 12px; padding-bottom: 10px; border-bottom: 1.5px solid var(--card-border); margin-bottom: 12px; }
+    .cost-grid-header span { font-family: var(--font-body); font-size: .76rem; color: var(--text-mid); text-transform: uppercase; letter-spacing: .04em; }
+    .cost-grid-header span:nth-child(2) { text-align: right; }
+    .cost-grid-header span:nth-child(3) { text-align: center; }
+    .cost-row { display: grid; grid-template-columns: 1fr 160px 90px; gap: 12px; align-items: center; padding: 8px 0; }
+    .cost-row input { background: var(--bg); border: 1.5px solid var(--card-border); border-radius: 8px; padding: 8px 12px; font-family: var(--font-body); font-size: .9rem; color: var(--text-dark); outline: none; transition: border-color .15s; }
+    .cost-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(192,84,78,.1); }
+    .cost-row input.valor { text-align: right; }
+    .cost-row .actions { display: flex; justify-content: center; gap: 6px; }
+    .cost-empty { padding: 20px; text-align: center; color: var(--text-mid); font-size: .88rem; font-family: var(--font-body); }
+    .double-list { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 28px; }
+    .calc-result { margin-top: 18px; padding: 18px 22px; background: var(--inner-bg); border-radius: 14px; border: 1.5px dashed var(--card-border); text-align: center; }
+    .calc-result .label { font-family: var(--font-body); font-size: .82rem; color: var(--text-mid); margin-bottom: 4px; }
+    .calc-result .value { font-family: var(--font-display); font-size: 2rem; color: var(--accent); letter-spacing: .02em; }
+    .calc-result.empty .value { color: var(--text-mid); font-size: 1.2rem; }
+    .save-bar { position: sticky; bottom: 16px; background: rgba(247,240,232,0.95); backdrop-filter: blur(6px); padding: 16px; border-radius: 14px; border: 1.5px solid var(--card-border); display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; box-shadow: 0 -4px 20px rgba(0,0,0,.05); }
+  </style>
+</head>
+<body>
+<div class="loading-bar" id="loadingBar"></div>
+<aside class="sidebar">
+  <div class="logo-svg-wrap"><img src="img/logo.png" alt="Logo" style="width:150px;height:80px;object-fit:contain;"/></div>
+  <nav>
+    <a href="relatorio.html">Relatórios</a>
+    <a href="pedidos.html">Pedidos</a>
+    <a href="insumos.html">Insumos</a>
+    <a href="produtos.html">Produtos</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="fornecedores.html">Fornecedores</a>
+    <a href="balanco.html">Balanço</a>
+    <a href="financeiro.html" class="active">Financeiro</a>
+  </nav>
+</aside>
+<main class="main">
+  <h1 class="page-title">Parâmetros Financeiros</h1>
+
+  <!-- SELETOR DE MÊS -->
+  <div class="month-bar">
+    <label>Mês de referência:</label>
+    <input type="month" id="mesRef" onchange="loadParams()"/>
+    <span style="font-size:.78rem;color:var(--text-mid)">Os parâmetros são salvos por mês — cada mês pode ter suas próprias taxas.</span>
+  </div>
+
+  <!-- CONFIGURAÇÕES + CALCULADORA -->
+  <div class="config-grid">
+    <div class="config-card">
+      <h2>Configurações do Mês</h2>
+      <p class="sub-info">Define os valores base usados nos cálculos do Balanço.</p>
+      <div class="form-grid" style="grid-template-columns:1fr;gap:18px">
+        <div class="form-group">
+          <label>Faturamento Base (R$)</label>
+          <div class="input-money">
+            <span class="prefix">R$</span>
+            <input type="number" id="p-faturamento" class="pref" step="0.01" min="0" placeholder="0,00"/>
+          </div>
+          <span style="font-size:.75rem;color:var(--text-mid);margin-top:4px">Usado como referência em simulações estratégicas.</span>
+        </div>
+        <div class="form-group">
+          <label>Taxa de Reinvestimento</label>
+          <div class="input-money">
+            <input type="number" id="p-reinvest" class="suf" step="0.01" min="0" max="100" placeholder="0"/>
+            <span class="suffix">%</span>
+          </div>
+          <span style="font-size:.75rem;color:var(--text-mid);margin-top:4px">% do faturamento reservado para reinvestimento.</span>
+        </div>
+        <div class="form-group">
+          <label>Margem de Lucro Desejada</label>
+          <div class="input-money">
+            <input type="number" id="p-margem" class="suf" step="0.01" min="0" max="500" placeholder="0"/>
+            <span class="suffix">%</span>
+          </div>
+          <span style="font-size:.75rem;color:var(--text-mid);margin-top:4px">Aplicada sobre o custo na calculadora de preço.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-card">
+      <h2>Calculadora de Preço</h2>
+      <p class="sub-info">Sugere preço de venda com base no custo + margem desejada.</p>
+      <div class="form-group">
+        <label>Custo Base do Produto (R$)</label>
+        <div class="input-money">
+          <span class="prefix">R$</span>
+          <input type="number" id="calc-custo" class="pref" step="0.01" min="0" placeholder="0,00" oninput="calcular()"/>
+        </div>
+      </div>
+      <div class="calc-result empty" id="calc-result">
+        <div class="label">Preço Sugerido de Venda</div>
+        <div class="value">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LISTAS DE CUSTOS -->
+  <div class="double-list">
+    <!-- Custos Fixos -->
+    <div class="cost-list">
+      <h2>Custos Fixos <span class="total">Total: <b id="tot-fixos">R$ 0,00</b></span></h2>
+      <div class="cost-grid-header">
+        <span>Descrição</span><span>Valor mensal</span><span>Ações</span>
+      </div>
+      <div id="list-fixos"></div>
+      <button class="btn-add-row" style="margin-top:14px" onclick="addCostRow('fixos')">+ Adicionar custo fixo</button>
+    </div>
+
+    <!-- Custos Variáveis -->
+    <div class="cost-list">
+      <h2>Custos Variáveis <span class="total">Total: <b id="tot-vars">R$ 0,00</b></span></h2>
+      <div class="cost-grid-header">
+        <span>Descrição</span><span>Valor mensal</span><span>Ações</span>
+      </div>
+      <div id="list-vars"></div>
+      <button class="btn-add-row" style="margin-top:14px" onclick="addCostRow('vars')">+ Adicionar custo variável</button>
+    </div>
+  </div>
+
+  <!-- BARRA DE SALVAMENTO -->
+  <div class="save-bar">
+    <button class="btn btn-secondary" onclick="loadAll()">Descartar Alterações</button>
+    <button class="btn" id="btnSalvar" onclick="saveAll()">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Salvar Tudo
+    </button>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script>
+if (!requireAuth()) throw new Error("redirect");
+renderUserBar();
+
+let params = null;
+let custosFixos = [], custosVars = [];
+// snapshots para detectar exclusões
+let removedFixos = new Set(), removedVars = new Set();
+
+function mesAtualInput() {
+  const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function mesParaData(m) { return `${m}-01`; }
+
+async function loadAll() {
+  removedFixos.clear(); removedVars.clear();
+  if (!document.getElementById('mesRef').value) {
+    document.getElementById('mesRef').value = mesAtualInput();
+  }
+  loadStart();
+  try {
+    const [fixos, vars] = await Promise.all([
+      supa('custos_fixos?select=*&order=id_custo_fixo.asc'),
+      supa('custos_variaveis?select=*&order=id_custo_variavel.asc'),
+    ]);
+    custosFixos = fixos || [];
+    custosVars  = vars  || [];
+    renderCostList('fixos');
+    renderCostList('vars');
+    updateTotals();
+    await loadParams();
+  } catch(e) { toast('Erro: ' + e.message, true); }
+  loadDone();
+}
+
+async function loadParams() {
+  const mesRef = document.getElementById('mesRef').value;
+  if (!mesRef) return;
+  const dataMes = mesParaData(mesRef);
+  loadStart();
+  try {
+    const data = await supa(`parametros_financeiros?mes_referencia=eq.${dataMes}`);
+    if (data && data.length) {
+      params = data[0];
+    } else {
+      // criar registro novo automaticamente
+      const [novo] = await supa('parametros_financeiros', {
+        method: 'POST',
+        body: JSON.stringify({ mes_referencia: dataMes, faturamento_base: 0, taxa_reinvestimento: 0, margem_lucro_desejada: 0 })
+      });
+      params = novo;
+      toast('Parâmetros do mês criados.');
+    }
+    document.getElementById('p-faturamento').value = params.faturamento_base || '';
+    document.getElementById('p-reinvest').value    = params.taxa_reinvestimento || '';
+    document.getElementById('p-margem').value      = params.margem_lucro_desejada || '';
+    calcular();
+  } catch(e) { toast('Erro ao carregar parâmetros: ' + e.message, true); }
+  loadDone();
+}
+
+function renderCostList(tipo) {
+  const arr = tipo === 'fixos' ? custosFixos : custosVars;
+  const idField = tipo === 'fixos' ? 'id_custo_fixo' : 'id_custo_variavel';
+  const removed = tipo === 'fixos' ? removedFixos : removedVars;
+  const el = document.getElementById('list-' + tipo);
+  const visible = arr.filter(c => !removed.has(c[idField] || c._tempId));
+  if (!visible.length) {
+    el.innerHTML = '<div class="cost-empty">Nenhum custo cadastrado. Clique em adicionar abaixo.</div>';
+    return;
+  }
+  el.innerHTML = visible.map((c, i) => {
+    const key = c[idField] || c._tempId;
+    return `<div class="cost-row" data-key="${key}" data-tipo="${tipo}">
+      <input type="text" class="c-nome" placeholder="Ex: Aluguel, Internet…" value="${(c.nome || '').replace(/"/g,'&quot;')}" oninput="updateCost('${tipo}','${key}','nome',this.value)"/>
+      <input type="number" class="c-valor valor" step="0.01" min="0" placeholder="0,00" value="${c.valor || ''}" oninput="updateCost('${tipo}','${key}','valor',this.value)"/>
+      <div class="actions">
+        <button class="btn-icon btn-del-icon" onclick="removeCost('${tipo}','${key}')" title="Remover"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateCost(tipo, key, field, val) {
+  const arr = tipo === 'fixos' ? custosFixos : custosVars;
+  const idField = tipo === 'fixos' ? 'id_custo_fixo' : 'id_custo_variavel';
+  const c = arr.find(x => String(x[idField] || x._tempId) === String(key));
+  if (!c) return;
+  c[field] = field === 'valor' ? (parseFloat(val) || 0) : val;
+  c._dirty = true;
+  if (field === 'valor') updateTotals();
+}
+
+function addCostRow(tipo) {
+  const arr = tipo === 'fixos' ? custosFixos : custosVars;
+  arr.push({ _tempId: 'tmp-' + Date.now() + '-' + Math.random().toString(36).slice(2,7), nome: '', valor: 0, _new: true });
+  renderCostList(tipo);
+  // focus on new input
+  const rows = document.querySelectorAll('#list-' + tipo + ' .cost-row');
+  if (rows.length) rows[rows.length - 1].querySelector('.c-nome').focus();
+}
+
+function removeCost(tipo, key) {
+  const removed = tipo === 'fixos' ? removedFixos : removedVars;
+  removed.add(isNaN(parseInt(key)) ? key : parseInt(key));
+  renderCostList(tipo);
+  updateTotals();
+}
+
+function updateTotals() {
+  const t1 = custosFixos.filter(c => !removedFixos.has(c.id_custo_fixo || c._tempId)).reduce((s,c) => s + (parseFloat(c.valor) || 0), 0);
+  const t2 = custosVars.filter(c => !removedVars.has(c.id_custo_variavel || c._tempId)).reduce((s,c) => s + (parseFloat(c.valor) || 0), 0);
+  document.getElementById('tot-fixos').textContent = 'R$ ' + fmtMoney(t1);
+  document.getElementById('tot-vars').textContent  = 'R$ ' + fmtMoney(t2);
+}
+
+function calcular() {
+  const custo = parseFloat(document.getElementById('calc-custo').value);
+  const margem = parseFloat(document.getElementById('p-margem').value) || 0;
+  const res = document.getElementById('calc-result');
+  if (!custo || custo <= 0) {
+    res.className = 'calc-result empty';
+    res.querySelector('.value').textContent = '—';
+    return;
+  }
+  const preco = custo * (1 + margem/100);
+  res.className = 'calc-result';
+  res.querySelector('.value').textContent = 'R$ ' + fmtMoney(preco);
+}
+
+document.addEventListener('input', e => {
+  if (e.target.id === 'p-margem') calcular();
+});
+
+async function saveAll() {
+  const btn = document.getElementById('btnSalvar');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  loadStart();
+  try {
+    // 1) Salvar parâmetros do mês
+    const payload = {
+      faturamento_base:       parseFloat(document.getElementById('p-faturamento').value) || 0,
+      taxa_reinvestimento:    parseFloat(document.getElementById('p-reinvest').value)    || 0,
+      margem_lucro_desejada:  parseFloat(document.getElementById('p-margem').value)      || 0,
+    };
+    await supa(`parametros_financeiros?id_parametro=eq.${params.id_parametro}`, { method: 'PATCH', body: JSON.stringify(payload) });
+
+    // 2) Deletar removidos
+    const delFixos = [...removedFixos].filter(x => typeof x === 'number');
+    const delVars  = [...removedVars].filter(x => typeof x === 'number');
+    for (const id of delFixos) await supa(`custos_fixos?id_custo_fixo=eq.${id}`,           { method: 'DELETE' });
+    for (const id of delVars)  await supa(`custos_variaveis?id_custo_variavel=eq.${id}`,   { method: 'DELETE' });
+
+    // 3) Inserir novos e atualizar editados
+    const novosFixos = custosFixos.filter(c => c._new && !removedFixos.has(c._tempId) && c.nome.trim());
+    const novosVars  = custosVars.filter(c =>  c._new && !removedVars.has(c._tempId)  && c.nome.trim());
+    const editFixos  = custosFixos.filter(c => !c._new && c._dirty && !removedFixos.has(c.id_custo_fixo));
+    const editVars   = custosVars.filter(c =>  !c._new && c._dirty && !removedVars.has(c.id_custo_variavel));
+
+    if (novosFixos.length) await supa('custos_fixos',     { method: 'POST', body: JSON.stringify(novosFixos.map(c => ({ nome: c.nome.trim(), valor: c.valor || 0 }))) });
+    if (novosVars.length)  await supa('custos_variaveis', { method: 'POST', body: JSON.stringify(novosVars.map(c =>  ({ nome: c.nome.trim(), valor: c.valor || 0 }))) });
+
+    for (const c of editFixos) await supa(`custos_fixos?id_custo_fixo=eq.${c.id_custo_fixo}`,           { method: 'PATCH', body: JSON.stringify({ nome: c.nome.trim(), valor: c.valor || 0 }) });
+    for (const c of editVars)  await supa(`custos_variaveis?id_custo_variavel=eq.${c.id_custo_variavel}`, { method: 'PATCH', body: JSON.stringify({ nome: c.nome.trim(), valor: c.valor || 0 }) });
+
+    toast('Tudo salvo com sucesso!');
+    await loadAll();
+  } catch(e) { toast('Erro ao salvar: ' + e.message, true); }
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 7l3 3 5-6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Salvar Tudo`;
+  loadDone();
+}
+
+document.getElementById('mesRef').value = mesAtualInput();
+loadAll();
+</script>
+</body>
+</html>
