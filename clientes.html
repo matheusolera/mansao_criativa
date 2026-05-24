@@ -7,9 +7,7 @@
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-
 <div class="loading-bar" id="loadingBar"></div>
-
 <aside class="sidebar">
   <div class="logo-svg-wrap"><img src="img/logo.png" alt="Logo" style="width:150px;height:80px;object-fit:contain;"/></div>
   <nav>
@@ -22,306 +20,169 @@
     <a href="#">Balanço</a>
   </nav>
 </aside>
-
 <main class="main">
   <h1 class="page-title">Clientes</h1>
-
   <div class="toolbar">
     <div class="search-wrap">
-      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-        <circle cx="6.5" cy="6.5" r="5" stroke="#7A4A40" stroke-width="1.8"/>
-        <path d="M10.5 10.5L14 14" stroke="#7A4A40" stroke-width="1.8" stroke-linecap="round"/>
-      </svg>
-      <input type="text" id="searchInput" placeholder="Buscar por nome, e-mail ou telefone…" oninput="filterClientes()"/>
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#7A4A40" stroke-width="1.8"/><path d="M10.5 10.5L14 14" stroke="#7A4A40" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" id="searchInput" placeholder="Buscar por nome, e-mail ou telefone…" oninput="filterData()"/>
     </div>
     <button class="btn" onclick="openNewModal()">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
       Novo Cliente
     </button>
   </div>
-
   <div class="table-container">
-    <div class="tbl-header">
-      <span>ID</span>
-      <span style="text-align:left">Nome</span>
-      <span>E-mail</span>
-      <span>Telefone</span>
-      <span>Observação</span>
-      <span>Sobrenome</span>
-      <span>Ações</span>
+    <div class="tbl-header tbl-clientes">
+      <span class="left">ID</span><span class="left">Nome</span><span>E-mail</span><span>Telefone</span><span>Observação</span><span>Ações</span>
     </div>
-    <div id="clientes-list"><div class="empty-state">Carregando clientes…</div></div>
+    <div id="data-list"><div class="empty-state">Carregando clientes…</div></div>
   </div>
-
   <div class="pagination" id="pagination"></div>
 </main>
 
-<!-- MODAL NOVO/EDITAR -->
-<div class="modal-overlay" id="clienteModal">
+<!-- MODAL -->
+<div class="modal-overlay" id="mainModal">
   <div class="modal">
-    <button class="modal-close" onclick="closeModal('clienteModal')" title="Fechar">✕</button>
+    <button class="modal-close" onclick="closeModal('mainModal')">✕</button>
     <h2 id="modalTitle">Novo Cliente</h2>
     <div class="form-grid">
-      <div class="form-group">
-        <label>Nome *</label>
-        <input type="text" id="f-nome" placeholder="Nome"/>
-      </div>
-      <div class="form-group">
-        <label>Sobrenome</label>
-        <input type="text" id="f-sobrenome" placeholder="Sobrenome"/>
-      </div>
-      <div class="form-group">
-        <label>Telefone</label>
-        <input type="text" id="f-telefone" placeholder="(00) 00000-0000"/>
-      </div>
-      <div class="form-group">
-        <label>E-mail</label>
-        <input type="email" id="f-email" placeholder="email@exemplo.com"/>
-      </div>
-      <div class="form-group full">
-        <label>Observação</label>
-        <textarea id="f-observacao" rows="3" placeholder="Observações sobre o cliente…"></textarea>
-      </div>
+      <div class="form-group"><label>Nome *</label><input type="text" id="f-nome" placeholder="Nome"/></div>
+      <div class="form-group"><label>Sobrenome</label><input type="text" id="f-sobrenome" placeholder="Sobrenome"/></div>
+      <div class="form-group"><label>Telefone</label><input type="text" id="f-telefone" placeholder="(00) 00000-0000"/></div>
+      <div class="form-group"><label>E-mail</label><input type="email" id="f-email" placeholder="email@exemplo.com"/></div>
+      <div class="form-group full"><label>Observação</label><textarea id="f-observacao" rows="3" placeholder="Observações sobre o cliente…"></textarea></div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('clienteModal')">Cancelar</button>
-      <button class="btn" id="btnSalvar" onclick="saveCliente()">Salvar Cliente</button>
+      <button class="btn btn-secondary" onclick="closeModal('mainModal')">Cancelar</button>
+      <button class="btn" id="btnSalvar" onclick="saveItem()">Salvar Cliente</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL CONFIRMAR EXCLUSÃO -->
+<!-- CONFIRM -->
 <div class="modal-overlay" id="confirmModal">
   <div class="confirm-modal">
-    <button class="modal-close" onclick="closeModal('confirmModal')" title="Fechar">✕</button>
-    <p>Tem certeza que deseja excluir o cliente</p>
-    <p class="cliente-nome" id="confirmNome"></p>
-    <p style="font-size:.85rem;color:var(--text-mid);margin-bottom:24px;">Esta ação não pode ser desfeita.</p>
+    <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+    <p>Excluir o cliente</p>
+    <span class="highlight" id="confirmNome"></span>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancelar</button>
-      <button class="btn btn-danger" id="btnConfirmDelete" onclick="deleteCliente()">Excluir</button>
+      <button class="btn btn-danger" id="btnDel" onclick="deleteItem()">Excluir</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
-
+<script src="shared.js"></script>
 <script>
-const SUPA_URL = 'https://ctueqxlhbtfzvocwohjf.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0dWVxeGxoYnRmenZvY3dvaGpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NjQyMTMsImV4cCI6MjA5NTE0MDIxM30.VikphOEMgR4QgDOLQkneZWOC2XdgbFvoXyAn1rsDsec';
+let allData=[], filtered=[], editingId=null, deletingId=null, currentPage=1;
+const PAGE=15;
 
-const headers = {
-  'apikey': SUPA_KEY,
-  'Authorization': `Bearer ${SUPA_KEY}`,
-  'Content-Type': 'application/json',
-  'Prefer': 'return=representation'
-};
-
-async function supa(path, options = {}) {
-  const res = await fetch(`${SUPA_URL}/rest/v1/${path}`, { headers, ...options });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `HTTP ${res.status}`);
-  }
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
-}
-
-// STATE
-let allClientes  = [];
-let filtered     = [];
-let editingId    = null;
-let deletingId   = null;
-const PAGE_SIZE  = 15;
-let currentPage  = 1;
-
-// LOADING
-function loadStart() { const b = document.getElementById('loadingBar'); b.className = 'loading-bar active'; }
-function loadDone()  { const b = document.getElementById('loadingBar'); b.className = 'loading-bar done'; setTimeout(() => b.className = 'loading-bar', 400); }
-
-// TOAST
-function toast(msg, isError = false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (isError ? ' error' : '');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.className = 'toast', 3200);
-}
-
-// LOAD
-async function loadClientes() {
+async function loadAll() {
   loadStart();
   try {
     const data = await supa('clientes?select=*&order=nome.asc');
-    allClientes = data || [];
-    filtered = [...allClientes];
-    currentPage = 1;
-    render();
-  } catch(e) {
-    toast('Erro ao carregar clientes: ' + e.message, true);
-    document.getElementById('clientes-list').innerHTML =
-      '<div class="empty-state">Não foi possível carregar os clientes.</div>';
-  }
+    allData = data || []; filtered = [...allData]; render();
+  } catch(e) { toast('Erro: ' + e.message, true); document.getElementById('data-list').innerHTML = `<div class="empty-state">Erro: ${e.message}</div>`; }
   loadDone();
 }
 
-// FILTER
-function filterClientes() {
+function filterData() {
   const q = document.getElementById('searchInput').value.toLowerCase().trim();
-  filtered = q
-    ? allClientes.filter(c =>
-        `${c.nome} ${c.sobrenome||''}`.toLowerCase().includes(q) ||
-        (c.email||'').toLowerCase().includes(q) ||
-        (c.telefone||'').includes(q)
-      )
-    : [...allClientes];
+  filtered = q ? allData.filter(c =>
+    `${c.nome} ${c.sobrenome || ''}`.toLowerCase().includes(q) ||
+    (c.email || '').toLowerCase().includes(q) ||
+    (c.telefone || '').includes(q)
+  ) : [...allData];
   currentPage = 1;
   render();
 }
 
-// RENDER
 function render() {
-  const container = document.getElementById('clientes-list');
-  if (!filtered.length) {
-    container.innerHTML = '<div class="empty-state">Nenhum cliente encontrado.</div>';
-    document.getElementById('pagination').innerHTML = '';
-    return;
-  }
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const page  = filtered.slice(start, start + PAGE_SIZE);
-
-  container.innerHTML = page.map(c => `
-    <div class="client-row">
-      <span>#${c.id_cliente}</span>
-      <span class="name-cell">${c.nome} ${c.sobrenome || ''}</span>
-      <span>${c.email || '—'}</span>
+  const el = document.getElementById('data-list');
+  if (!filtered.length) { el.innerHTML = '<div class="empty-state">Nenhum cliente encontrado.</div>'; document.getElementById('pagination').innerHTML = ''; return; }
+  const start = (currentPage - 1) * PAGE;
+  const page = filtered.slice(start, start + PAGE);
+  el.innerHTML = page.map(c => `
+    <div class="data-row tbl-clientes">
+      <span class="id-cell">#${c.id_cliente}</span>
+      <span class="left">${c.nome}${c.sobrenome ? ' ' + c.sobrenome : ''}</span>
+      <span title="${c.email || ''}">${c.email || '—'}</span>
       <span>${c.telefone || '—'}</span>
-      <span title="${c.observacao || ''}">${c.observacao ? c.observacao.substring(0,40) + (c.observacao.length>40?'…':'') : '—'}</span>
-      <span>${c.sobrenome || '—'}</span>
+      <span title="${c.observacao || ''}">${c.observacao ? c.observacao.substring(0,40) + (c.observacao.length > 40 ? '…' : '') : '—'}</span>
       <span class="row-actions">
-        <button class="btn-icon btn-edit-icon" onclick="openEditModal(${c.id_cliente})" title="Editar">
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5L11.5 4.5L5 11H3v-2L9.5 2.5Z" stroke="#856404" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        </button>
-        <button class="btn-icon btn-del-icon" onclick="openConfirmDelete(${c.id_cliente},'${(c.nome+' '+(c.sobrenome||'')).trim().replace(/'/g,"\\'")}'))" title="Excluir">
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
+        <button class="btn-icon btn-edit-icon" onclick="openEdit(${c.id_cliente})" title="Editar"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5L11.5 4.5L5 11H3v-2L9.5 2.5Z" stroke="#856404" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+        <button class="btn-icon btn-del-icon" onclick="openDel(${c.id_cliente})" title="Excluir"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </span>
-    </div>
-  `).join('');
-
-  // PAGINATION
-  const pg = document.getElementById('pagination');
-  if (totalPages <= 1) { pg.innerHTML = ''; return; }
-
-  let btns = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
-  for (let i = 1; i <= totalPages; i++) {
-    if (totalPages > 7 && i > 2 && i < totalPages - 1 && Math.abs(i - currentPage) > 1) {
-      if (i === 3 || i === totalPages - 2) btns += `<span class="page-info">…</span>`;
-      continue;
-    }
-    btns += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
-  }
-  btns += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
-  btns += `<span class="page-info">${filtered.length} clientes</span>`;
-  pg.innerHTML = btns;
+    </div>`).join('');
+  buildPagination('pagination', currentPage, filtered.length, PAGE, 'goPage');
 }
 
-function goPage(p) {
-  const total = Math.ceil(filtered.length / PAGE_SIZE);
-  if (p < 1 || p > total) return;
-  currentPage = p;
-  render();
-}
+function goPage(p) { const t = Math.ceil(filtered.length / PAGE); if (p < 1 || p > t) return; currentPage = p; render(); }
 
-// MODALS
-function openModal(id)  { document.getElementById(id).classList.add('visible'); }
-function closeModal(id) { document.getElementById(id).classList.remove('visible'); if (id === 'clienteModal') editingId = null; }
-
-function clearForm() {
-  ['f-nome','f-sobrenome','f-telefone','f-email','f-observacao'].forEach(id => document.getElementById(id).value = '');
-}
+function openModal(id) { document.getElementById(id).classList.add('visible'); }
+function closeModal(id) { document.getElementById(id).classList.remove('visible'); if (id === 'mainModal') editingId = null; }
 
 function openNewModal() {
   editingId = null;
-  clearForm();
   document.getElementById('modalTitle').textContent = 'Novo Cliente';
-  openModal('clienteModal');
+  ['f-nome','f-sobrenome','f-telefone','f-email','f-observacao'].forEach(i => document.getElementById(i).value = '');
+  openModal('mainModal');
 }
 
-function openEditModal(id) {
-  const c = allClientes.find(x => x.id_cliente === id);
-  if (!c) return;
+function openEdit(id) {
+  const c = allData.find(x => x.id_cliente === id); if (!c) return;
   editingId = id;
   document.getElementById('modalTitle').textContent = 'Editar Cliente';
-  document.getElementById('f-nome').value       = c.nome       || '';
-  document.getElementById('f-sobrenome').value  = c.sobrenome  || '';
-  document.getElementById('f-telefone').value   = c.telefone   || '';
-  document.getElementById('f-email').value      = c.email      || '';
+  document.getElementById('f-nome').value = c.nome || '';
+  document.getElementById('f-sobrenome').value = c.sobrenome || '';
+  document.getElementById('f-telefone').value = c.telefone || '';
+  document.getElementById('f-email').value = c.email || '';
   document.getElementById('f-observacao').value = c.observacao || '';
-  openModal('clienteModal');
+  openModal('mainModal');
 }
 
-function openConfirmDelete(id, nome) {
+function openDel(id) {
+  const c = allData.find(x => x.id_cliente === id); if (!c) return;
   deletingId = id;
-  document.getElementById('confirmNome').textContent = nome;
+  document.getElementById('confirmNome').textContent = `${c.nome}${c.sobrenome ? ' ' + c.sobrenome : ''}`;
   openModal('confirmModal');
 }
 
-// SAVE
-async function saveCliente() {
-  const nome      = document.getElementById('f-nome').value.trim();
-  const sobrenome = document.getElementById('f-sobrenome').value.trim();
-  const telefone  = document.getElementById('f-telefone').value.trim();
-  const email     = document.getElementById('f-email').value.trim();
-  const observacao = document.getElementById('f-observacao').value.trim();
-
-  if (!nome) { toast('O nome é obrigatório.', true); return; }
-
-  const payload = { nome, sobrenome: sobrenome||null, telefone: telefone||null, email: email||null, observacao: observacao||null };
-
-  const btn = document.getElementById('btnSalvar');
-  btn.disabled = true; btn.textContent = 'Salvando…';
+async function saveItem() {
+  const nome = document.getElementById('f-nome').value.trim();
+  if (!nome) { toast('Nome obrigatório.', true); return; }
+  const payload = {
+    nome,
+    sobrenome: document.getElementById('f-sobrenome').value.trim() || null,
+    telefone: document.getElementById('f-telefone').value.trim() || null,
+    email: document.getElementById('f-email').value.trim() || null,
+    observacao: document.getElementById('f-observacao').value.trim() || null,
+  };
+  const btn = document.getElementById('btnSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
   loadStart();
   try {
-    if (editingId) {
-      await supa(`clientes?id_cliente=eq.${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
-      toast('Cliente atualizado!');
-    } else {
-      await supa('clientes', { method: 'POST', body: JSON.stringify(payload) });
-      toast('Cliente criado!');
-    }
-    closeModal('clienteModal');
-    await loadClientes();
-  } catch(e) {
-    toast('Erro ao salvar: ' + e.message, true);
-  }
+    if (editingId) { await supa(`clientes?id_cliente=eq.${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) }); toast('Cliente atualizado!'); }
+    else { await supa('clientes', { method: 'POST', body: JSON.stringify(payload) }); toast('Cliente criado!'); }
+    closeModal('mainModal'); await loadAll();
+  } catch(e) { toast('Erro: ' + e.message, true); }
   btn.disabled = false; btn.textContent = 'Salvar Cliente';
   loadDone();
 }
 
-// DELETE
-async function deleteCliente() {
-  if (!deletingId) return;
-  const btn = document.getElementById('btnConfirmDelete');
-  btn.disabled = true; btn.textContent = 'Excluindo…';
+async function deleteItem() {
+  const btn = document.getElementById('btnDel'); btn.disabled = true; btn.textContent = 'Excluindo…';
   loadStart();
   try {
     await supa(`clientes?id_cliente=eq.${deletingId}`, { method: 'DELETE' });
-    toast('Cliente excluído.');
-    closeModal('confirmModal');
-    deletingId = null;
-    await loadClientes();
-  } catch(e) {
-    toast('Erro ao excluir: ' + e.message, true);
-  }
+    toast('Cliente excluído.'); closeModal('confirmModal'); await loadAll();
+  } catch(e) { toast('Erro: ' + e.message, true); }
   btn.disabled = false; btn.textContent = 'Excluir';
   loadDone();
 }
 
-// INIT
-loadClientes();
+loadAll();
 </script>
 </body>
 </html>
