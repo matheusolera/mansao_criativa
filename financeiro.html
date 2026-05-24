@@ -294,8 +294,9 @@ function calcular() {
   const lucroPct     = parseFloat(document.getElementById('calc-lucro').value) || 0; // %
 
   // Parâmetros vindos dos campos da página
-  const faturamento = parseFloat(document.getElementById('p-faturamento').value) || 0;
-  const totalFixos  = custosFixos
+  const faturamento  = parseFloat(document.getElementById('p-faturamento').value) || 0;
+  const reinvestPct  = parseFloat(document.getElementById('p-reinvest').value)    || 0; // %
+  const totalFixos   = custosFixos
     .filter(c => !removedFixos.has(c.id_custo_fixo || c._tempId))
     .reduce((s, c) => s + (parseFloat(c.valor) || 0), 0);
   // Variáveis já estão em % — basta somar
@@ -314,17 +315,18 @@ function calcular() {
     return;
   }
 
-  const fracVar  = totalVarsPct / 100;
-  const fracFixo = faturamento > 0 ? (totalFixos / faturamento) : 0;
-  const fracLucro = lucroPct / 100;
+  const fracVar     = totalVarsPct / 100;
+  const fracLucro   = lucroPct / 100;
+  const fracReinv   = reinvestPct / 100;
+  const fracFixo    = faturamento > 0 ? (totalFixos / faturamento) : 0;
 
-  // Fórmula: CUSTO PRODUTO / (1 − VARIÁVEIS% − LUCRO% − (FIXOS/FATURAMENTO))
-  const denominador = 1 - fracVar - fracLucro - fracFixo;
+  // Fórmula: CUSTO PRODUTO / (1 − VARIÁVEIS% − LUCRO% − REINVESTIMENTO% − (FIXOS/FATURAMENTO))
+  const denominador = 1 - fracVar - fracLucro - fracReinv - fracFixo;
 
   if (denominador <= 0) {
     res.className = 'calc-result invalid';
     valEl.textContent = 'Cálculo inviável';
-    formEl.innerHTML = `O denominador resultou em <b>${denominador.toFixed(4).replace('.', ',')}</b>.<br>Reduza o lucro esperado ou os custos variáveis, ou aumente o faturamento.`;
+    formEl.innerHTML = `O denominador resultou em <b>${denominador.toFixed(4).replace('.', ',')}</b>.<br>Reduza o lucro, o reinvestimento ou os custos variáveis, ou aumente o faturamento.`;
     return;
   }
 
@@ -332,9 +334,9 @@ function calcular() {
   res.className = 'calc-result';
   valEl.textContent = 'R$ ' + fmtMoney(preco);
   formEl.innerHTML = `
-    <b>Fórmula:</b> Custo Produto ÷ (1 − Variáveis% − Lucro% − (Fixos ÷ Faturamento))<br>
-    <b>Aplicada:</b> R$ ${fmtMoney(custoProduto)} ÷ (1 − ${fmtMoney(totalVarsPct)}% − ${lucroPct.toFixed(2).replace('.', ',')}% − (R$ ${fmtMoney(totalFixos)} ÷ R$ ${fmtMoney(faturamento)}))<br>
-    <b>=</b> R$ ${fmtMoney(custoProduto)} ÷ (1 − ${fmtMoney(totalVarsPct)}% − ${lucroPct.toFixed(2).replace('.', ',')}% − ${(fracFixo*100).toFixed(2).replace('.', ',')}%) = R$ ${fmtMoney(preco)}
+    <b>Fórmula:</b> Custo Produto ÷ (1 − Variáveis% − Lucro% − Reinvestimento% − (Fixos ÷ Faturamento))<br>
+    <b>Aplicada:</b> R$ ${fmtMoney(custoProduto)} ÷ (1 − ${fmtMoney(totalVarsPct)}% − ${lucroPct.toFixed(2).replace('.', ',')}% − ${reinvestPct.toFixed(2).replace('.', ',')}% − (R$ ${fmtMoney(totalFixos)} ÷ R$ ${fmtMoney(faturamento)}))<br>
+    <b>=</b> R$ ${fmtMoney(custoProduto)} ÷ (1 − ${fmtMoney(totalVarsPct)}% − ${lucroPct.toFixed(2).replace('.', ',')}% − ${reinvestPct.toFixed(2).replace('.', ',')}% − ${(fracFixo*100).toFixed(2).replace('.', ',')}%) = R$ ${fmtMoney(preco)}
   `;
 }
 
