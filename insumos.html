@@ -53,8 +53,8 @@
     </div>
     <div class="sub-section">
       <h3>Fornecedores deste Insumo</h3>
-      <div class="sub-col-header" style="grid-template-columns:1fr 120px 80px 40px;">
-        <span>Fornecedor</span><span>Preço</span><span>Qtd</span><span></span>
+      <div class="sub-col-header" style="grid-template-columns:1fr 130px 110px 80px 40px;">
+        <span>Fornecedor</span><span>ID no Fornecedor</span><span>Preço</span><span>Qtd</span><span></span>
       </div>
       <div id="modal-fornec"></div>
       <button class="btn-add-row" onclick="addFornecRow()">+ Adicionar fornecedor</button>
@@ -136,7 +136,7 @@ function render() {
             </div>
             <div class="expand-block">
               <h4>Fornecedores (${cached.length})</h4>
-              ${cached.length ? `<div class="mini-row mini-header" style="grid-template-columns:1fr 100px 70px;"><span>Fornecedor</span><span style="text-align:center">Preço</span><span style="text-align:center">Qtd</span></div>` + cached.map(f => `<div class="mini-row" style="grid-template-columns:1fr 100px 70px;"><span>${f.fornecedores?.nome || '—'}</span><span style="text-align:center">R$ ${fmtMoney(f.preco)}</span><span style="text-align:center">${f.quantidade}</span></div>`).join('') : '<div style="font-size:.84rem;color:var(--text-mid);padding:8px 0">Sem fornecedores.</div>'}
+              ${cached.length ? `<div class="mini-row mini-header" style="grid-template-columns:1fr 110px 90px 60px;"><span>Fornecedor</span><span style="text-align:center">ID no Fornec.</span><span style="text-align:center">Preço</span><span style="text-align:center">Qtd</span></div>` + cached.map(f => `<div class="mini-row" style="grid-template-columns:1fr 110px 90px 60px;"><span>${f.fornecedores?.nome || '—'}</span><span style="text-align:center;color:var(--text-mid)">${f.id_produto_fornecedor || '—'}</span><span style="text-align:center">R$ ${fmtMoney(f.preco)}</span><span style="text-align:center">${f.quantidade}</span></div>`).join('') : '<div style="font-size:.84rem;color:var(--text-mid);padding:8px 0">Sem fornecedores.</div>'}
             </div>
           </div>
         </div>`;
@@ -191,9 +191,10 @@ function buildFornSelect(selId = '') {
 function addFornecRow(f = {}) {
   const div = document.createElement('div');
   div.className = 'sub-row';
-  div.style.gridTemplateColumns = '1fr 120px 80px 40px';
+  div.style.gridTemplateColumns = '1fr 130px 110px 80px 40px';
   div.innerHTML = `
     <select class="f-forn">${buildFornSelect(f.id_fornecedor)}</select>
+    <input type="text" class="f-idprod" placeholder="Ex: SKU-1234" value="${(f.id_produto_fornecedor || '').replace(/"/g,'&quot;')}"/>
     <input type="number" class="f-preco" placeholder="R$ 0,00" value="${f.preco || ''}" step="0.01" min="0"/>
     <input type="number" class="f-qty" placeholder="Qtd" value="${f.quantidade || ''}" min="0"/>
     <button class="btn-remove" onclick="this.parentElement.remove()" title="Remover">✕</button>
@@ -249,6 +250,7 @@ async function saveItem() {
     const fRows = [...document.querySelectorAll('#modal-fornec .sub-row')].map(d => ({
       id_insumo: insId,
       id_fornecedor: parseInt(d.querySelector('.f-forn').value),
+      id_produto_fornecedor: d.querySelector('.f-idprod').value.trim() || null,
       preco: parseFloat(d.querySelector('.f-preco').value) || 0,
       quantidade: parseInt(d.querySelector('.f-qty').value) || 0,
     })).filter(x => x.id_fornecedor);
