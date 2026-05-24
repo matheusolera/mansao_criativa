@@ -111,7 +111,7 @@
       <div id="d-fixos"><div class="empty-detail">Carregando…</div></div>
     </div>
     <div class="section">
-      <h2>Custos Variáveis <span class="total">Total: <b id="t-vars">R$ 0,00</b></span></h2>
+      <h2>Custos Variáveis <span class="total">Total: <b id="t-vars">0,00%</b></span></h2>
       <div id="d-vars"><div class="empty-detail">Carregando…</div></div>
     </div>
   </div>
@@ -183,11 +183,12 @@ async function loadBalanco() {
     const reinvestimento = faturamento * (taxaReinvest / 100);
 
     // ── CUSTOS ──
-    const totFixos = (fixos || []).reduce((s,c) => s + (c.valor || 0), 0);
-    const totVars  = (vars  || []).reduce((s,c) => s + (c.valor || 0), 0);
+    const totFixos    = (fixos || []).reduce((s,c) => s + (c.valor || 0), 0);
+    const totVarsPct  = (vars  || []).reduce((s,c) => s + (c.valor || 0), 0); // soma em %
+    const totVarsRs   = faturamento * (totVarsPct / 100);                      // valor em R$
 
     // ── LUCRO E CAPITAL ──
-    const lucro = faturamento - cpv - reinvestimento - totFixos - totVars;
+    const lucro = faturamento - cpv - reinvestimento - totFixos - totVarsRs;
     const capital = cpv + reinvestimento;
 
     // ── RENDER KPIs ──
@@ -204,15 +205,15 @@ async function loadBalanco() {
     lucroCard.className = 'kpi-card ' + (lucro > 0 ? 'profit-pos' : lucro < 0 ? 'profit-neg' : 'neutral');
 
     // ── BREAKDOWN ──
-    renderBreakdown('d-fixos', fixos || [], 't-fixos');
-    renderBreakdown('d-vars',  vars  || [], 't-vars');
+    renderBreakdown('d-fixos', fixos || [], 't-fixos', 'R$', null);
+    renderBreakdown('d-vars',  vars  || [], 't-vars', '%',  faturamento);
 
     // ── DEMONSTRATIVO ──
     document.getElementById('dr-fat').textContent   = 'R$ ' + fmtMoney(faturamento);
     document.getElementById('dr-cpv').textContent   = '− R$ ' + fmtMoney(cpv);
     document.getElementById('dr-rein').textContent  = '− R$ ' + fmtMoney(reinvestimento);
     document.getElementById('dr-fixos').textContent = '− R$ ' + fmtMoney(totFixos);
-    document.getElementById('dr-vars').textContent  = '− R$ ' + fmtMoney(totVars);
+    document.getElementById('dr-vars').textContent  = '− R$ ' + fmtMoney(totVarsRs) + ' (' + fmtMoney(totVarsPct) + '%)';
     document.getElementById('dr-lucro').textContent = (lucro < 0 ? '− R$ ' : 'R$ ') + fmtMoney(Math.abs(lucro));
     document.getElementById('dr-lucro').style.color = lucro >= 0 ? '#2e7d32' : '#b71c1c';
 
@@ -222,21 +223,29 @@ async function loadBalanco() {
   loadDone();
 }
 
-function renderBreakdown(elId, items, totalId) {
+function renderBreakdown(elId, items, totalId, unidade, faturamento) {
+  unidade = unidade || 'R$';
+  const fmtVal = v => unidade === '%' ? fmtMoney(v) + '%' : 'R$ ' + fmtMoney(v);
+
   const el = document.getElementById(elId);
   if (!items.length) {
     el.innerHTML = '<div class="empty-detail">Nenhum custo cadastrado.<br><a href="financeiro.html" style="color:var(--accent);text-decoration:none;font-size:.84rem">→ Cadastrar em Parâmetros Financeiros</a></div>';
-    document.getElementById(totalId).textContent = 'R$ 0,00';
+    document.getElementById(totalId).textContent = fmtVal(0);
     return;
   }
   const tot = items.reduce((s,c) => s + (c.valor || 0), 0);
-  el.innerHTML = items.map(c => `
-    <div class="breakdown-row">
-      <span class="b-nome">${c.nome}</span>
-      <span class="b-valor">R$ ${fmtMoney(c.valor)}</span>
-    </div>
-  `).join('') + `<div class="breakdown-row total-row"><span class="b-nome">Total</span><span class="b-valor">R$ ${fmtMoney(tot)}</span></div>`;
-  document.getElementById(totalId).textContent = 'R$ ' + fmtMoney(tot);
+  el.innerHTML = items.map(c => {
+    let extra = '';
+    if (unidade === '%' && faturamento > 0) {
+      extra = ` <span style="color:var(--text-mid);font-size:.78rem">(R$ ${fmtMoney(faturamento * c.valor / 100)})</span>`;
+    }
+    return `
+      <div class="breakdown-row">
+        <span class="b-nome">${c.nome}</span>
+        <span class="b-valor">${fmtVal(c.valor)}${extra}</span>
+      </div>`;
+  }).join('') + `<div class="breakdown-row total-row"><span class="b-nome">Total</span><span class="b-valor">${fmtVal(tot)}</span></div>`;
+  document.getElementById(totalId).textContent = fmtVal(tot);
 }
 
 document.getElementById('mesRef').value = mesAtualInput();
