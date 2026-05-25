@@ -12,12 +12,33 @@
     .month-bar input[type=month]:focus { border-color: var(--accent); }
 
     /* HERO CARD - Capital disponível */
-    .hero-card { background: linear-gradient(135deg, #C0544E 0%, #a3433d 100%); border-radius: 22px; padding: 36px 44px; color: #fff; margin-bottom: 32px; box-shadow: 0 12px 32px rgba(192,84,78,.18); position: relative; overflow: hidden; }
+    .hero-card { background: linear-gradient(135deg, #C0544E 0%, #a3433d 100%); border-radius: 22px; padding: 36px 44px; color: #fff; margin-bottom: 24px; box-shadow: 0 12px 32px rgba(192,84,78,.18); position: relative; overflow: hidden; }
     .hero-card::before { content: ''; position: absolute; top: -40px; right: -40px; width: 220px; height: 220px; background: rgba(255,255,255,.08); border-radius: 50%; }
     .hero-card::after { content: ''; position: absolute; bottom: -60px; left: -30px; width: 160px; height: 160px; background: rgba(255,255,255,.05); border-radius: 50%; }
     .hero-card .label { font-family: var(--font-body); font-size: .9rem; opacity: .9; margin-bottom: 8px; position: relative; }
     .hero-card .value { font-family: var(--font-display); font-size: 3.4rem; letter-spacing: .02em; position: relative; line-height: 1.1; }
     .hero-card .formula { font-family: var(--font-body); font-size: .82rem; opacity: .82; margin-top: 12px; position: relative; }
+
+    /* BUDGET CARD - Orçamento do mês */
+    .budget-card { background: var(--card-bg); border-radius: 18px; border: 2px solid var(--card-border); padding: 22px 28px; margin-bottom: 32px; display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 20px; align-items: center; }
+    .budget-title { font-family: var(--font-display); font-size: 1.1rem; color: var(--text-dark); letter-spacing: .02em; }
+    .budget-title small { display: block; font-family: var(--font-body); font-size: .76rem; color: var(--text-mid); margin-top: 4px; font-weight: 400; }
+    .budget-item { text-align: center; }
+    .budget-item .b-label { font-family: var(--font-body); font-size: .72rem; color: var(--text-mid); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+    .budget-item .b-value { font-family: var(--font-display); font-size: 1.4rem; color: var(--text-dark); letter-spacing: .01em; }
+    .budget-item.disponivel .b-value { color: #1565c0; }
+    .budget-item.gasto    .b-value { color: #b71c1c; }
+    .budget-item.restante .b-value { color: #2e7d32; }
+    .budget-item.restante.exceeded .b-value { color: #b71c1c; }
+    .budget-bar { grid-column: 1/-1; height: 8px; background: var(--inner-bg); border-radius: 8px; overflow: hidden; position: relative; }
+    .budget-bar .fill { height: 100%; background: linear-gradient(90deg, #6aaa6a, #2e7d32); transition: width .4s; }
+    .budget-bar .fill.warn { background: linear-gradient(90deg, #e6c84a, #c79c00); }
+    .budget-bar .fill.exceeded { background: linear-gradient(90deg, #e09090, #b71c1c); }
+
+    @media (max-width: 900px) {
+      .budget-card { grid-template-columns: 1fr; }
+      .budget-title, .budget-item { text-align: left; }
+    }
 
     /* KPI Grid */
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 28px; }
@@ -58,6 +79,7 @@
     <a href="relatorio.html">Relatórios</a>
     <a href="pedidos.html">Pedidos</a>
     <a href="insumos.html">Insumos</a>
+    <a href="compras.html">Compras</a>
     <a href="produtos.html">Produtos</a>
     <a href="clientes.html">Clientes</a>
     <a href="fornecedores.html">Fornecedores</a>
@@ -79,6 +101,27 @@
     <div class="label">Capital disponível para compras (próximo mês)</div>
     <div class="value" id="k-capital">R$ 0,00</div>
     <div class="formula">CPV + Reinvestimento — orçamento estimado para reposição de estoque, embalagens e insumos.</div>
+  </div>
+
+  <!-- BUDGET: Orçamento de compras DESTE mês -->
+  <div class="budget-card">
+    <div class="budget-title">
+      Orçamento de Compras
+      <small>Gerado pelo mês anterior · gastos no mês atual</small>
+    </div>
+    <div class="budget-item disponivel">
+      <div class="b-label">Disponível</div>
+      <div class="b-value" id="b-disp">R$ 0,00</div>
+    </div>
+    <div class="budget-item gasto">
+      <div class="b-label">Já gasto</div>
+      <div class="b-value" id="b-gasto">R$ 0,00</div>
+    </div>
+    <div class="budget-item restante" id="b-restante-card">
+      <div class="b-label">Restante</div>
+      <div class="b-value" id="b-restante">R$ 0,00</div>
+    </div>
+    <div class="budget-bar"><div class="fill" id="b-fill" style="width:0%"></div></div>
   </div>
 
   <!-- KPIs -->
@@ -142,15 +185,30 @@ async function loadBalanco() {
   const dataMes = `${mes}-01`;
   document.getElementById('rangeInfo').textContent = `Período contábil: ${fmtDate(inicio)} a ${fmtDate(fim)}`;
 
+  // Mês anterior (para calcular o orçamento que veio dele)
+  const [y, m] = mes.split('-').map(Number);
+  const prevY = m === 1 ? y - 1 : y;
+  const prevM = m === 1 ? 12 : m - 1;
+  const prevMes = `${prevY}-${String(prevM).padStart(2,'0')}`;
+  const { inicio: prevInicio, fim: prevFim } = fiscalRange(prevMes);
+  const prevDataMes = `${prevMes}-01`;
+
   loadStart();
   try {
-    const [pedidos, prodPedido, produtos, fixos, vars, paramsArr] = await Promise.all([
+    const [pedidos, prodPedido, produtos, fixos, vars, paramsArr,
+           prevPedidos, prevProdPedido, prevParamsArr, compras] = await Promise.all([
       supa(`pedidos?select=id_pedido,valor,status,data_pedido&status=eq.Finalizado&data_pedido=gte.${inicio}&data_pedido=lte.${fim}`),
       supa('produto_pedido?select=id_pedido,id_produto,quantidade,preco_total'),
       supa('produtos?select=id_produto,nome,custo,preco_unitario'),
       supa('custos_fixos?select=*&order=nome.asc'),
       supa('custos_variaveis?select=*&order=nome.asc'),
       supa(`parametros_financeiros?mes_referencia=eq.${dataMes}`),
+      // Mês anterior — para descobrir quanto de orçamento foi gerado
+      supa(`pedidos?select=id_pedido,valor,status&status=eq.Finalizado&data_pedido=gte.${prevInicio}&data_pedido=lte.${prevFim}`),
+      supa('produto_pedido?select=id_pedido,id_produto,quantidade'),
+      supa(`parametros_financeiros?mes_referencia=eq.${prevDataMes}`),
+      // Compras no mês visualizado (gastos contra orçamento)
+      supa(`compras?select=id_compra,valor_transporte,data_compra&data_compra=gte.${inicio}&data_compra=lte.${fim}`),
     ]);
 
     // ── FATURAMENTO ──
@@ -170,6 +228,30 @@ async function loadBalanco() {
     const params = (paramsArr && paramsArr[0]) || { taxa_reinvestimento: 0, margem_lucro_desejada: 0 };
     const taxaReinvest = parseFloat(params.taxa_reinvestimento) || 0;
     const reinvestimento = faturamento * (taxaReinvest / 100);
+
+    // ── ORÇAMENTO DESTE MÊS (gerado pelo MÊS ANTERIOR) ──
+    const prevPedidosIds = new Set((prevPedidos || []).map(p => p.id_pedido));
+    const prevFaturamento = (prevPedidos || []).reduce((s,p) => s + (p.valor || 0), 0);
+    const prevPP = (prevProdPedido || []).filter(x => prevPedidosIds.has(x.id_pedido));
+    const prevCpv = prevPP.reduce((s, x) => {
+      const prod = (produtos || []).find(p => p.id_produto === x.id_produto);
+      return s + ((prod ? prod.custo || 0 : 0) * (x.quantidade || 0));
+    }, 0);
+    const prevTaxaReinv = parseFloat(((prevParamsArr && prevParamsArr[0]) || {}).taxa_reinvestimento) || 0;
+    const orcamento = prevCpv + prevFaturamento * (prevTaxaReinv / 100);
+
+    // ── COMPRAS REALIZADAS NO MÊS ──
+    const compraIds = (compras || []).map(c => c.id_compra);
+    let gastoCompras = 0;
+    if (compraIds.length) {
+      const itensComprados = await supa(`compra_insumo?select=id_compra,preco_total&id_compra=in.(${compraIds.join(',')})`);
+      const totaisPorCompra = {};
+      (itensComprados || []).forEach(i => {
+        totaisPorCompra[i.id_compra] = (totaisPorCompra[i.id_compra] || 0) + (i.preco_total || 0);
+      });
+      gastoCompras = (compras || []).reduce((s,c) => s + (totaisPorCompra[c.id_compra] || 0) + (c.valor_transporte || 0), 0);
+    }
+    renderBudget(orcamento, gastoCompras);
 
     // ── CUSTOS ──
     const totFixos    = (fixos || []).reduce((s,c) => s + (c.valor || 0), 0);
@@ -210,6 +292,22 @@ async function loadBalanco() {
     toast('Erro: ' + e.message, true);
   }
   loadDone();
+}
+
+function renderBudget(orcamento, gasto) {
+  const restante = orcamento - gasto;
+  const pct = orcamento > 0 ? Math.min(100, (gasto / orcamento) * 100) : 0;
+
+  document.getElementById('b-disp').textContent     = 'R$ ' + fmtMoney(orcamento);
+  document.getElementById('b-gasto').textContent    = 'R$ ' + fmtMoney(gasto);
+  document.getElementById('b-restante').textContent = (restante < 0 ? '− R$ ' : 'R$ ') + fmtMoney(Math.abs(restante));
+
+  const card = document.getElementById('b-restante-card');
+  card.className = 'budget-item restante' + (restante < 0 ? ' exceeded' : '');
+
+  const fill = document.getElementById('b-fill');
+  fill.style.width = pct + '%';
+  fill.className = 'fill' + (gasto > orcamento ? ' exceeded' : pct > 80 ? ' warn' : '');
 }
 
 function renderBreakdown(elId, items, totalId, unidade, faturamento) {
