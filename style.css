@@ -69,6 +69,7 @@ h1.page-title { font-family: var(--font-display); font-size: 3.2rem; font-weight
 .tbl-insumos    { grid-template-columns: 60px 1fr 120px 130px 90px; }
 .tbl-produtos   { grid-template-columns: 60px 1fr 110px 110px 130px 140px 90px; }
 .tbl-fornec     { grid-template-columns: 60px 1fr 130px 1fr 130px 1fr 90px; }
+.tbl-compras    { grid-template-columns: 40px 60px 110px 1fr 130px 130px 130px 90px; }
 
 /* ── ROW ACTION ICONS ── */
 .row-actions { display: flex; gap: 6px; justify-content: center; }
