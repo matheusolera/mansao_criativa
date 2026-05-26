@@ -39,13 +39,13 @@
   <div class="table-container">
     <div class="tbl-header tbl-pedidos">
       <span class="left"></span>
-      <span class="left">Nº Pedido</span>
-      <span>Valor</span>
-      <span>Pagamento</span>
-      <span>Cliente</span>
-      <span>Data Pedido</span>
-      <span>Data Receb.</span>
-      <span>Status</span>
+      <span class="left sortable" onclick="setSort('id_pedido')" data-col="id_pedido">Nº Pedido <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('valor')" data-col="valor">Valor <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('forma_pagamento')" data-col="forma_pagamento">Pagamento <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('cliente')" data-col="cliente">Cliente <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('data_pedido')" data-col="data_pedido">Data Pedido <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('data_recebimento')" data-col="data_recebimento">Data Receb. <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('status')" data-col="status">Status <span class="sort-arrow"></span></span>
       <span>Ações</span>
     </div>
     <div id="data-list"><div class="empty-state">Carregando pedidos…</div></div>
@@ -134,7 +134,49 @@ renderUserBar();
 
 let allData=[], filtered=[], clientes=[], produtos=[], expandedIds=new Set(), expandCache={};
 let editingId=null, deletingId=null, currentPage=1;
+let sortCol = 'id_pedido', sortDir = 'desc';
 const PAGE=15;
+
+function setSort(col) {
+  if (sortCol === col) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortCol = col;
+    sortDir = 'asc';
+  }
+  applySort();
+  render();
+}
+
+function applySort() {
+  const dir = sortDir === 'asc' ? 1 : -1;
+  filtered.sort((a, b) => {
+    let va, vb;
+    if (sortCol === 'cliente') {
+      va = clienteNome(a.id_cliente).toLowerCase();
+      vb = clienteNome(b.id_cliente).toLowerCase();
+    } else {
+      va = a[sortCol]; vb = b[sortCol];
+    }
+    // null/undefined sempre vão para o fim
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    // números
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    // strings
+    if (va < vb) return -1 * dir;
+    if (va > vb) return  1 * dir;
+    return 0;
+  });
+
+  // Atualiza visual dos cabeçalhos
+  document.querySelectorAll('.tbl-header .sortable').forEach(el => {
+    const active = el.dataset.col === sortCol;
+    el.classList.toggle('active', active);
+    el.classList.toggle('asc', active && sortDir === 'asc');
+  });
+}
 
 async function loadAll() {
   loadStart();
@@ -146,6 +188,7 @@ async function loadAll() {
     ]);
     allData = ped || []; clientes = cli || []; produtos = prod || [];
     filtered = [...allData];
+    applySort();
     render();
   } catch(e) { toast('Erro: ' + e.message, true); document.getElementById('data-list').innerHTML = `<div class="empty-state">Erro: ${e.message}</div>`; }
   loadDone();
@@ -170,6 +213,7 @@ function filterData() {
     (p.status || '').toLowerCase().includes(q) ||
     (p.forma_pagamento || '').toLowerCase().includes(q)
   ) : [...allData];
+  applySort();
   currentPage = 1;
   render();
 }

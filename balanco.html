@@ -34,6 +34,9 @@
     .budget-bar .fill { height: 100%; background: linear-gradient(90deg, #6aaa6a, #2e7d32); transition: width .4s; }
     .budget-bar .fill.warn { background: linear-gradient(90deg, #e6c84a, #c79c00); }
     .budget-bar .fill.exceeded { background: linear-gradient(90deg, #e09090, #b71c1c); }
+    .budget-warning { grid-column: 1/-1; display: flex; align-items: center; gap: 10px; background: #fff8e1; border: 1px solid #f0d878; border-radius: 10px; padding: 10px 14px; font-family: var(--font-body); font-size: .84rem; color: #856404; }
+    .budget-warning svg { flex-shrink: 0; }
+    .budget-warning a { color: #856404; text-decoration: underline; font-weight: 700; }
 
     @media (max-width: 900px) {
       .budget-card { grid-template-columns: 1fr; }
@@ -122,6 +125,10 @@
       <div class="b-value" id="b-restante">R$ 0,00</div>
     </div>
     <div class="budget-bar"><div class="fill" id="b-fill" style="width:0%"></div></div>
+    <div class="budget-warning" id="b-warning" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1L15 14H1L8 1Z" stroke="#856404" stroke-width="1.6" stroke-linejoin="round" fill="#fff3cd"/><path d="M8 6v3.5M8 11.5v.5" stroke="#856404" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span id="b-warning-text"></span>
+    </div>
   </div>
 
   <!-- KPIs -->
@@ -239,6 +246,7 @@ async function loadBalanco() {
     }, 0);
     const prevTaxaReinv = parseFloat(((prevParamsArr && prevParamsArr[0]) || {}).taxa_reinvestimento) || 0;
     const orcamento = prevCpv + prevFaturamento * (prevTaxaReinv / 100);
+    const prevParamsExists = prevParamsArr && prevParamsArr.length > 0;
 
     // ── COMPRAS REALIZADAS NO MÊS ──
     const compraIds = (compras || []).map(c => c.id_compra);
@@ -251,7 +259,7 @@ async function loadBalanco() {
       });
       gastoCompras = (compras || []).reduce((s,c) => s + (totaisPorCompra[c.id_compra] || 0) + (c.valor_transporte || 0), 0);
     }
-    renderBudget(orcamento, gastoCompras);
+    renderBudget(orcamento, gastoCompras, prevParamsExists, prevMes, prevFaturamento);
 
     // ── CUSTOS ──
     const totFixos    = (fixos || []).reduce((s,c) => s + (c.valor || 0), 0);
@@ -294,7 +302,7 @@ async function loadBalanco() {
   loadDone();
 }
 
-function renderBudget(orcamento, gasto) {
+function renderBudget(orcamento, gasto, prevParamsExists, prevMes, prevFaturamento) {
   const restante = orcamento - gasto;
   const pct = orcamento > 0 ? Math.min(100, (gasto / orcamento) * 100) : 0;
 
@@ -308,6 +316,22 @@ function renderBudget(orcamento, gasto) {
   const fill = document.getElementById('b-fill');
   fill.style.width = pct + '%';
   fill.className = 'fill' + (gasto > orcamento ? ' exceeded' : pct > 80 ? ' warn' : '');
+
+  // ── AVISO: parâmetros do mês anterior ausentes ──
+  const warning = document.getElementById('b-warning');
+  const txt = document.getElementById('b-warning-text');
+  const [py, pm] = prevMes.split('-');
+  const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const nomeMes = `${nomesMeses[parseInt(pm)-1]}/${py}`;
+  if (!prevParamsExists) {
+    warning.style.display = 'flex';
+    txt.innerHTML = `Os parâmetros financeiros de <b>${nomeMes}</b> não foram configurados. A taxa de reinvestimento usada foi 0%, então o orçamento pode estar subestimado. <a href="financeiro.html">Configurar agora →</a>`;
+  } else if (prevFaturamento === 0) {
+    warning.style.display = 'flex';
+    txt.innerHTML = `Não há pedidos finalizados em <b>${nomeMes}</b>. O orçamento disponível para este mês veio apenas do CPV.`;
+  } else {
+    warning.style.display = 'none';
+  }
 }
 
 function renderBreakdown(elId, items, totalId, unidade, faturamento) {
