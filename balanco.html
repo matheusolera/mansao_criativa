@@ -20,27 +20,34 @@
     .hero-card .formula { font-family: var(--font-body); font-size: .82rem; opacity: .82; margin-top: 12px; position: relative; }
 
     /* BUDGET CARD - Orçamento do mês */
-    .budget-card { background: var(--card-bg); border-radius: 18px; border: 2px solid var(--card-border); padding: 22px 28px; margin-bottom: 32px; display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 20px; align-items: center; }
+    .budget-card { background: var(--card-bg); border-radius: 18px; border: 2px solid var(--card-border); padding: 22px 28px; margin-bottom: 32px; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1.2fr; gap: 18px; align-items: center; }
     .budget-title { font-family: var(--font-display); font-size: 1.1rem; color: var(--text-dark); letter-spacing: .02em; }
-    .budget-title small { display: block; font-family: var(--font-body); font-size: .76rem; color: var(--text-mid); margin-top: 4px; font-weight: 400; }
+    .budget-title small { display: block; font-family: var(--font-body); font-size: .74rem; color: var(--text-mid); margin-top: 4px; font-weight: 400; }
     .budget-item { text-align: center; }
     .budget-item .b-label { font-family: var(--font-body); font-size: .72rem; color: var(--text-mid); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
     .budget-item .b-value { font-family: var(--font-display); font-size: 1.4rem; color: var(--text-dark); letter-spacing: .01em; }
+    .budget-item .b-sub { font-family: var(--font-body); font-size: .68rem; color: var(--text-mid); margin-top: 4px; line-height: 1.3; }
     .budget-item.disponivel .b-value { color: #1565c0; }
     .budget-item.gasto    .b-value { color: #b71c1c; }
-    .budget-item.restante .b-value { color: #2e7d32; }
-    .budget-item.restante.exceeded .b-value { color: #b71c1c; }
+    .budget-item.saldo    .b-value { color: #7A4A40; }
+    .btn-fundos { margin-top: 8px; background: none; border: 1.5px solid var(--card-border); color: var(--text-mid); border-radius: 50px; padding: 4px 12px; font-family: var(--font-body); font-size: .72rem; cursor: pointer; transition: background .14s, color .14s, border-color .14s; }
+    .btn-fundos:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .budget-item.podegastar { background: var(--inner-bg); border-radius: 12px; padding: 10px 12px; }
+    .budget-item.podegastar .b-value { color: #2e7d32; font-size: 1.6rem; }
+    .budget-item.podegastar.exceeded .b-value { color: #b71c1c; }
     .budget-bar { grid-column: 1/-1; height: 8px; background: var(--inner-bg); border-radius: 8px; overflow: hidden; position: relative; }
     .budget-bar .fill { height: 100%; background: linear-gradient(90deg, #6aaa6a, #2e7d32); transition: width .4s; }
     .budget-bar .fill.warn { background: linear-gradient(90deg, #e6c84a, #c79c00); }
     .budget-bar .fill.exceeded { background: linear-gradient(90deg, #e09090, #b71c1c); }
     .budget-warning { grid-column: 1/-1; display: flex; align-items: center; gap: 10px; background: #fff8e1; border: 1px solid #f0d878; border-radius: 10px; padding: 10px 14px; font-family: var(--font-body); font-size: .84rem; color: #856404; }
+    .budget-warning.danger { background: #fde8e8; border-color: #f5c0c0; color: #b71c1c; }
     .budget-warning svg { flex-shrink: 0; }
-    .budget-warning a { color: #856404; text-decoration: underline; font-weight: 700; }
+    .budget-warning a { color: inherit; text-decoration: underline; font-weight: 700; }
 
-    @media (max-width: 900px) {
-      .budget-card { grid-template-columns: 1fr; }
-      .budget-title, .budget-item { text-align: left; }
+    @media (max-width: 1000px) {
+      .budget-card { grid-template-columns: 1fr 1fr; }
+      .budget-title { grid-column: 1/-1; text-align: left; }
+      .budget-item { text-align: left; }
     }
 
     /* KPI Grid */
@@ -110,19 +117,25 @@
   <div class="budget-card">
     <div class="budget-title">
       Orçamento de Compras
-      <small>Gerado pelo mês anterior · gastos no mês atual</small>
+      <small>Disponível do mês + saldo acumulado de meses anteriores</small>
     </div>
     <div class="budget-item disponivel">
-      <div class="b-label">Disponível</div>
+      <div class="b-label">Disponível (mês)</div>
       <div class="b-value" id="b-disp">R$ 0,00</div>
     </div>
     <div class="budget-item gasto">
       <div class="b-label">Já gasto</div>
       <div class="b-value" id="b-gasto">R$ 0,00</div>
     </div>
-    <div class="budget-item restante" id="b-restante-card">
-      <div class="b-label">Restante</div>
-      <div class="b-value" id="b-restante">R$ 0,00</div>
+    <div class="budget-item saldo">
+      <div class="b-label">Saldo acumulado</div>
+      <div class="b-value" id="b-saldo">R$ 0,00</div>
+      <button class="btn-fundos" onclick="openAportes()">+ Adicionar fundos</button>
+    </div>
+    <div class="budget-item podegastar" id="b-pode-card">
+      <div class="b-label">Posso gastar</div>
+      <div class="b-value" id="b-pode">R$ 0,00</div>
+      <div class="b-sub" id="b-pode-sub"></div>
     </div>
     <div class="budget-bar"><div class="fill" id="b-fill" style="width:0%"></div></div>
     <div class="budget-warning" id="b-warning" style="display:none">
@@ -179,6 +192,53 @@
   </div>
 </main>
 
+<!-- MODAL APORTES -->
+<div class="modal-overlay" id="aportesModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('aportesModal')">✕</button>
+    <h2>Adicionar Fundos ao Saldo</h2>
+    <p style="font-family:var(--font-body);font-size:.85rem;color:var(--text-mid);margin-bottom:20px;margin-top:-14px">
+      Aportes manuais entram no saldo acumulado a partir da data informada (ex: capital próprio, empréstimo).
+    </p>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Data do Aporte *</label>
+        <input type="date" id="ap-data"/>
+      </div>
+      <div class="form-group">
+        <label>Valor (R$) *</label>
+        <input type="number" id="ap-valor" step="0.01" min="0" placeholder="0,00"/>
+      </div>
+      <div class="form-group full">
+        <label>Descrição</label>
+        <input type="text" id="ap-desc" placeholder="Ex: Capital próprio, empréstimo…"/>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="btnAporte" onclick="saveAporte()">+ Registrar Aporte</button>
+    </div>
+
+    <div class="sub-section">
+      <h3>Aportes Registrados <span id="ap-total" style="font-family:var(--font-body);font-size:.9rem;color:var(--accent);font-weight:400"></span></h3>
+      <div id="ap-list"><div class="empty-state" style="padding:20px">Carregando…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM EXCLUSÃO APORTE -->
+<div class="modal-overlay" id="confirmAporteModal">
+  <div class="confirm-modal">
+    <button class="modal-close" onclick="closeModal('confirmAporteModal')">✕</button>
+    <p>Excluir este aporte?</p>
+    <span class="highlight" id="confirmAporteNome"></span>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('confirmAporteModal')">Cancelar</button>
+      <button class="btn btn-danger" id="btnDelAporte" onclick="deleteAporte()">Excluir</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <script src="shared.js"></script>
 <script>
@@ -192,30 +252,15 @@ async function loadBalanco() {
   const dataMes = `${mes}-01`;
   document.getElementById('rangeInfo').textContent = `Período contábil: ${fmtDate(inicio)} a ${fmtDate(fim)}`;
 
-  // Mês anterior (para calcular o orçamento que veio dele)
-  const [y, m] = mes.split('-').map(Number);
-  const prevY = m === 1 ? y - 1 : y;
-  const prevM = m === 1 ? 12 : m - 1;
-  const prevMes = `${prevY}-${String(prevM).padStart(2,'0')}`;
-  const { inicio: prevInicio, fim: prevFim } = fiscalRange(prevMes);
-  const prevDataMes = `${prevMes}-01`;
-
   loadStart();
   try {
-    const [pedidos, prodPedido, produtos, fixos, vars, paramsArr,
-           prevPedidos, prevProdPedido, prevParamsArr, compras] = await Promise.all([
+    const [pedidos, prodPedido, produtos, fixos, vars, paramsArr] = await Promise.all([
       supa(`pedidos?select=id_pedido,valor,status,data_pedido&status=eq.Finalizado&data_pedido=gte.${inicio}&data_pedido=lte.${fim}`),
       supa('produto_pedido?select=id_pedido,id_produto,quantidade,preco_total'),
       supa('produtos?select=id_produto,nome,custo,preco_unitario'),
       supa('custos_fixos?select=*&order=nome.asc'),
       supa('custos_variaveis?select=*&order=nome.asc'),
       supa(`parametros_financeiros?mes_referencia=eq.${dataMes}`),
-      // Mês anterior — para descobrir quanto de orçamento foi gerado
-      supa(`pedidos?select=id_pedido,valor,status&status=eq.Finalizado&data_pedido=gte.${prevInicio}&data_pedido=lte.${prevFim}`),
-      supa('produto_pedido?select=id_pedido,id_produto,quantidade'),
-      supa(`parametros_financeiros?mes_referencia=eq.${prevDataMes}`),
-      // Compras no mês visualizado (gastos contra orçamento)
-      supa(`compras?select=id_compra,valor_transporte,data_compra&data_compra=gte.${inicio}&data_compra=lte.${fim}`),
     ]);
 
     // ── FATURAMENTO ──
@@ -236,30 +281,8 @@ async function loadBalanco() {
     const taxaReinvest = parseFloat(params.taxa_reinvestimento) || 0;
     const reinvestimento = faturamento * (taxaReinvest / 100);
 
-    // ── ORÇAMENTO DESTE MÊS (gerado pelo MÊS ANTERIOR) ──
-    const prevPedidosIds = new Set((prevPedidos || []).map(p => p.id_pedido));
-    const prevFaturamento = (prevPedidos || []).reduce((s,p) => s + (p.valor || 0), 0);
-    const prevPP = (prevProdPedido || []).filter(x => prevPedidosIds.has(x.id_pedido));
-    const prevCpv = prevPP.reduce((s, x) => {
-      const prod = (produtos || []).find(p => p.id_produto === x.id_produto);
-      return s + ((prod ? prod.custo || 0 : 0) * (x.quantidade || 0));
-    }, 0);
-    const prevTaxaReinv = parseFloat(((prevParamsArr && prevParamsArr[0]) || {}).taxa_reinvestimento) || 0;
-    const orcamento = prevCpv + prevFaturamento * (prevTaxaReinv / 100);
-    const prevParamsExists = prevParamsArr && prevParamsArr.length > 0;
-
-    // ── COMPRAS REALIZADAS NO MÊS ──
-    const compraIds = (compras || []).map(c => c.id_compra);
-    let gastoCompras = 0;
-    if (compraIds.length) {
-      const itensComprados = await supa(`compra_insumo?select=id_compra,preco_total&id_compra=in.(${compraIds.join(',')})`);
-      const totaisPorCompra = {};
-      (itensComprados || []).forEach(i => {
-        totaisPorCompra[i.id_compra] = (totaisPorCompra[i.id_compra] || 0) + (i.preco_total || 0);
-      });
-      gastoCompras = (compras || []).reduce((s,c) => s + (totaisPorCompra[c.id_compra] || 0) + (c.valor_transporte || 0), 0);
-    }
-    renderBudget(orcamento, gastoCompras, prevParamsExists, prevMes, prevFaturamento);
+    // ── ORÇAMENTO + SALDO ACUMULADO (percorre todos os meses até o atual) ──
+    await computeBudget(mes, produtos || []);
 
     // ── CUSTOS ──
     const totFixos    = (fixos || []).reduce((s,c) => s + (c.valor || 0), 0);
@@ -302,32 +325,196 @@ async function loadBalanco() {
   loadDone();
 }
 
-function renderBudget(orcamento, gasto, prevParamsExists, prevMes, prevFaturamento) {
-  const restante = orcamento - gasto;
-  const pct = orcamento > 0 ? Math.min(100, (gasto / orcamento) * 100) : 0;
+// Soma o mês (yyyy-mm) com N meses
+function addMonth(mesStr, n) {
+  let [y, m] = mesStr.split('-').map(Number);
+  m += n;
+  while (m > 12) { m -= 12; y++; }
+  while (m < 1)  { m += 12; y--; }
+  return `${y}-${String(m).padStart(2,'0')}`;
+}
 
-  document.getElementById('b-disp').textContent     = 'R$ ' + fmtMoney(orcamento);
-  document.getElementById('b-gasto').textContent    = 'R$ ' + fmtMoney(gasto);
-  document.getElementById('b-restante').textContent = (restante < 0 ? '− R$ ' : 'R$ ') + fmtMoney(Math.abs(restante));
+function nomeMesExt(mesStr) {
+  const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const [y, m] = mesStr.split('-');
+  return `${nomes[parseInt(m)-1]}/${y}`;
+}
 
-  const card = document.getElementById('b-restante-card');
-  card.className = 'budget-item restante' + (restante < 0 ? ' exceeded' : '');
+// Calcula o orçamento do mês `mesAlvo` e o saldo acumulado percorrendo
+// todos os meses desde o primeiro pedido/compra até o mês visualizado.
+async function computeBudget(mesAlvo, produtos) {
+  // 1) Descobrir o primeiro mês com dados (pedido, compra ou aporte mais antigo)
+  const [primPedido, primCompra, primAporte] = await Promise.all([
+    supa('pedidos?select=data_pedido&status=eq.Finalizado&order=data_pedido.asc&limit=1'),
+    supa('compras?select=data_compra&order=data_compra.asc&limit=1'),
+    supa('aportes?select=data_aporte&order=data_aporte.asc&limit=1'),
+  ]);
+  const datas = [];
+  if (primPedido && primPedido[0]) datas.push(primPedido[0].data_pedido);
+  if (primCompra && primCompra[0]) datas.push(primCompra[0].data_compra);
+  if (primAporte && primAporte[0]) datas.push(primAporte[0].data_aporte);
+
+  // Se não há dados nenhum, orçamento zerado
+  if (!datas.length) {
+    renderBudget({ disponivelMes: 0, gastoMes: 0, saldoAnterior: 0, prevParamsExists: true, prevFaturamento: 0, prevMes: addMonth(mesAlvo,-1), estouroReal: 0 });
+    return;
+  }
+
+  const dataMaisAntiga = datas.sort()[0];
+  // Começamos a percorrer a partir do mês do dado mais antigo (não +1),
+  // pois um aporte pode existir já no primeiro mês.
+  let mesIter = fiscalMonthOf(dataMaisAntiga);
+
+  // 2) Carregar tudo o que precisamos de uma vez (todos os meses)
+  const [todosPedidos, todoProdPedido, todasCompras, todosParams, todosAportes] = await Promise.all([
+    supa('pedidos?select=id_pedido,valor,status,data_pedido&status=eq.Finalizado'),
+    supa('produto_pedido?select=id_pedido,id_produto,quantidade'),
+    supa('compras?select=id_compra,valor_transporte,data_compra'),
+    supa('parametros_financeiros?select=mes_referencia,taxa_reinvestimento'),
+    supa('aportes?select=id_aporte,data_aporte,valor'),
+  ]);
+
+  // Mapa de itens de compra por compra (para calcular subtotal)
+  const compraIds = (todasCompras || []).map(c => c.id_compra);
+  let itensPorCompra = {};
+  if (compraIds.length) {
+    const itens = await supa(`compra_insumo?select=id_compra,preco_total&id_compra=in.(${compraIds.join(',')})`);
+    (itens || []).forEach(i => { itensPorCompra[i.id_compra] = (itensPorCompra[i.id_compra] || 0) + (i.preco_total || 0); });
+  }
+
+  const custoProduto = id => { const p = produtos.find(x => x.id_produto === id); return p ? (p.custo || 0) : 0; };
+
+  // Funções auxiliares por mês
+  function faturamentoDoMes(mesStr) {
+    const { inicio, fim } = fiscalRange(mesStr);
+    return (todosPedidos || []).filter(p => p.data_pedido >= inicio && p.data_pedido <= fim);
+  }
+  function cpvDoMes(pedidosDoMes) {
+    const ids = new Set(pedidosDoMes.map(p => p.id_pedido));
+    return (todoProdPedido || []).filter(x => ids.has(x.id_pedido))
+      .reduce((s,x) => s + custoProduto(x.id_produto) * (x.quantidade || 0), 0);
+  }
+  function taxaReinvDoMes(mesStr) {
+    const dataMes = `${mesStr}-01`;
+    const p = (todosParams || []).find(x => (x.mes_referencia || '').slice(0,10) === dataMes);
+    return { taxa: p ? (parseFloat(p.taxa_reinvestimento) || 0) : 0, existe: !!p };
+  }
+  function gastoDoMes(mesStr) {
+    const { inicio, fim } = fiscalRange(mesStr);
+    return (todasCompras || []).filter(c => c.data_compra >= inicio && c.data_compra <= fim)
+      .reduce((s,c) => s + (itensPorCompra[c.id_compra] || 0) + (c.valor_transporte || 0), 0);
+  }
+  function aportesDoMes(mesStr) {
+    const { inicio, fim } = fiscalRange(mesStr);
+    return (todosAportes || []).filter(a => a.data_aporte >= inicio && a.data_aporte <= fim)
+      .reduce((s,a) => s + (a.valor || 0), 0);
+  }
+
+  // 3) Percorrer mês a mês acumulando o saldo (nunca negativo)
+  let saldoAcumulado = 0;       // saldo que ENTRA no mês corrente
+  let saldoAntesDoAlvo = 0;     // saldo acumulado antes do mês visualizado
+  let dispAlvo = 0, gastoAlvo = 0, estouroReal = 0, aporteAlvo = 0;
+  let prevParamsInfo = { taxa: 0, existe: true };
+  let prevFaturamentoAlvo = 0;
+
+  // limite: não passar do mês alvo
+  while (mesIter <= mesAlvo) {
+    const mesAnterior = addMonth(mesIter, -1);
+    // Orçamento do mês = CPV + reinvestimento do mês ANTERIOR
+    const pedAnt = faturamentoDoMes(mesAnterior);
+    const fatAnt = pedAnt.reduce((s,p) => s + (p.valor || 0), 0);
+    const cpvAnt = cpvDoMes(pedAnt);
+    const reinvInfo = taxaReinvDoMes(mesAnterior);
+    const disponivel = cpvAnt + fatAnt * (reinvInfo.taxa / 100);
+    const gasto = gastoDoMes(mesIter);
+    const aporte = aportesDoMes(mesIter);
+
+    // total disponível neste mês = disponível do mês + saldo acumulado + aportes do mês
+    const totalDisponivel = disponivel + saldoAcumulado + aporte;
+    let novoSaldo = totalDisponivel - gasto;
+    let estouro = 0;
+    if (novoSaldo < 0) { estouro = -novoSaldo; novoSaldo = 0; } // trava em zero
+
+    if (mesIter === mesAlvo) {
+      saldoAntesDoAlvo = saldoAcumulado;
+      dispAlvo = disponivel;
+      gastoAlvo = gasto;
+      estouroReal = estouro;
+      prevParamsInfo = reinvInfo;
+      prevFaturamentoAlvo = fatAnt;
+      aporteAlvo = aporte;
+    }
+    saldoAcumulado = novoSaldo;
+    mesIter = addMonth(mesIter, 1);
+  }
+
+  renderBudget({
+    disponivelMes: dispAlvo,
+    gastoMes: gastoAlvo,
+    saldoAnterior: saldoAntesDoAlvo,
+    aporteMes: aporteAlvo,
+    prevParamsExists: prevParamsInfo.existe,
+    prevFaturamento: prevFaturamentoAlvo,
+    prevMes: addMonth(mesAlvo, -1),
+    estouroReal: estouroReal,
+  });
+}
+
+function renderBudget(d) {
+  const { disponivelMes, gastoMes, saldoAnterior, aporteMes = 0, prevParamsExists, prevFaturamento, prevMes, estouroReal } = d;
+
+  // Total que eu tinha para gastar = disponível do mês + saldo acumulado anterior + aportes do mês
+  const totalDisponivel = disponivelMes + saldoAnterior + aporteMes;
+  const podeGastar = Math.max(0, totalDisponivel - gastoMes);
+  const pct = totalDisponivel > 0 ? Math.min(100, (gastoMes / totalDisponivel) * 100) : (gastoMes > 0 ? 100 : 0);
+
+  // O saldo acumulado mostrado inclui os aportes do mês (entram no cofrinho)
+  const saldoExibido = saldoAnterior + aporteMes;
+
+  document.getElementById('b-disp').textContent  = 'R$ ' + fmtMoney(disponivelMes);
+  document.getElementById('b-gasto').textContent = 'R$ ' + fmtMoney(gastoMes);
+  document.getElementById('b-saldo').textContent = 'R$ ' + fmtMoney(saldoExibido);
+  document.getElementById('b-pode').textContent  = 'R$ ' + fmtMoney(podeGastar);
+
+  // Sub-texto explicando a composição do "Posso gastar"
+  const sub = document.getElementById('b-pode-sub');
+  const aporteTxt = aporteMes > 0 ? ` (inclui R$ ${fmtMoney(aporteMes)} de aportes)` : '';
+  if (gastoMes <= disponivelMes) {
+    const restanteMes = disponivelMes - gastoMes;
+    if (saldoExibido > 0) {
+      sub.textContent = `R$ ${fmtMoney(restanteMes)} do mês + R$ ${fmtMoney(saldoExibido)} acumulado${aporteTxt}`;
+    } else {
+      sub.textContent = `restante do mês`;
+    }
+  } else {
+    const pegoDoSaldo = Math.min(saldoExibido, gastoMes - disponivelMes);
+    sub.textContent = `R$ ${fmtMoney(pegoDoSaldo)} retirado do saldo acumulado${aporteTxt}`;
+  }
+
+  const card = document.getElementById('b-pode-card');
+  card.className = 'budget-item podegastar' + (estouroReal > 0 ? ' exceeded' : '');
 
   const fill = document.getElementById('b-fill');
   fill.style.width = pct + '%';
-  fill.className = 'fill' + (gasto > orcamento ? ' exceeded' : pct > 80 ? ' warn' : '');
+  fill.className = 'fill' + (estouroReal > 0 ? ' exceeded' : pct > 80 ? ' warn' : '');
 
-  // ── AVISO: parâmetros do mês anterior ausentes ──
+  // ── AVISOS ──
   const warning = document.getElementById('b-warning');
   const txt = document.getElementById('b-warning-text');
-  const [py, pm] = prevMes.split('-');
-  const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const nomeMes = `${nomesMeses[parseInt(pm)-1]}/${py}`;
-  if (!prevParamsExists) {
+  const nomeMes = nomeMesExt(prevMes);
+
+  if (estouroReal > 0) {
+    // estouro real: gastou mais que disponível + saldo acumulado
     warning.style.display = 'flex';
+    warning.className = 'budget-warning danger';
+    txt.innerHTML = `<b>Orçamento estourado!</b> As compras ultrapassaram em <b>R$ ${fmtMoney(estouroReal)}</b> o total disponível (orçamento do mês + saldo acumulado). Revise os gastos ou os parâmetros financeiros.`;
+  } else if (!prevParamsExists) {
+    warning.style.display = 'flex';
+    warning.className = 'budget-warning';
     txt.innerHTML = `Os parâmetros financeiros de <b>${nomeMes}</b> não foram configurados. A taxa de reinvestimento usada foi 0%, então o orçamento pode estar subestimado. <a href="financeiro.html">Configurar agora →</a>`;
   } else if (prevFaturamento === 0) {
     warning.style.display = 'flex';
+    warning.className = 'budget-warning';
     txt.innerHTML = `Não há pedidos finalizados em <b>${nomeMes}</b>. O orçamento disponível para este mês veio apenas do CPV.`;
   } else {
     warning.style.display = 'none';
@@ -357,6 +544,94 @@ function renderBreakdown(elId, items, totalId, unidade, faturamento) {
       </div>`;
   }).join('') + `<div class="breakdown-row total-row"><span class="b-nome">Total</span><span class="b-valor">${fmtVal(tot)}</span></div>`;
   document.getElementById(totalId).textContent = fmtVal(tot);
+}
+
+// ── APORTES (fundos manuais) ──
+let aportesList = [], deletingAporte = null;
+
+function openModal(id)  { document.getElementById(id).classList.add('visible'); }
+function closeModal(id) { document.getElementById(id).classList.remove('visible'); }
+
+async function openAportes() {
+  document.getElementById('ap-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ap-valor').value = '';
+  document.getElementById('ap-desc').value = '';
+  openModal('aportesModal');
+  await loadAportes();
+}
+
+async function loadAportes() {
+  const list = document.getElementById('ap-list');
+  list.innerHTML = '<div class="empty-state" style="padding:20px">Carregando…</div>';
+  try {
+    aportesList = await supa('aportes?select=*&order=data_aporte.desc') || [];
+    renderAportes();
+  } catch(e) {
+    list.innerHTML = `<div class="empty-state" style="padding:20px">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderAportes() {
+  const list = document.getElementById('ap-list');
+  const total = aportesList.reduce((s,a) => s + (a.valor || 0), 0);
+  document.getElementById('ap-total').textContent = aportesList.length ? `· Total: R$ ${fmtMoney(total)}` : '';
+  if (!aportesList.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:20px">Nenhum aporte registrado ainda.</div>';
+    return;
+  }
+  list.innerHTML = aportesList.map(a => `
+    <div class="sub-row" style="grid-template-columns:110px 1fr 130px 40px;align-items:center">
+      <span style="font-family:var(--font-body);font-size:.85rem;color:var(--text-mid)">${fmtDate(a.data_aporte)}</span>
+      <span style="font-family:var(--font-body);font-size:.88rem">${a.descricao || '—'}</span>
+      <span style="font-family:var(--font-body);font-size:.9rem;color:#2e7d32;font-weight:700;text-align:right">R$ ${fmtMoney(a.valor)}</span>
+      <button class="btn-remove" onclick="openDelAporte(${a.id_aporte})" title="Excluir">✕</button>
+    </div>
+  `).join('');
+}
+
+async function saveAporte() {
+  const data_aporte = document.getElementById('ap-data').value;
+  const valor = parseFloat(document.getElementById('ap-valor').value) || 0;
+  const descricao = document.getElementById('ap-desc').value.trim() || null;
+  if (!data_aporte) { toast('Informe a data do aporte.', true); return; }
+  if (valor <= 0) { toast('Informe um valor maior que zero.', true); return; }
+
+  const btn = document.getElementById('btnAporte');
+  btn.disabled = true; btn.textContent = 'Registrando…';
+  loadStart();
+  try {
+    await supa('aportes', { method: 'POST', body: JSON.stringify({ data_aporte, valor, descricao }) });
+    toast('Aporte registrado!');
+    document.getElementById('ap-valor').value = '';
+    document.getElementById('ap-desc').value = '';
+    await loadAportes();
+    await loadBalanco(); // recalcula o saldo na tela de fundo
+  } catch(e) { toast('Erro: ' + e.message, true); }
+  btn.disabled = false; btn.textContent = '+ Registrar Aporte';
+  loadDone();
+}
+
+function openDelAporte(id) {
+  deletingAporte = id;
+  const a = aportesList.find(x => x.id_aporte === id);
+  document.getElementById('confirmAporteNome').textContent = `${fmtDate(a.data_aporte)} — R$ ${fmtMoney(a.valor)}${a.descricao ? ' · ' + a.descricao : ''}`;
+  openModal('confirmAporteModal');
+}
+
+async function deleteAporte() {
+  const btn = document.getElementById('btnDelAporte');
+  btn.disabled = true; btn.textContent = 'Excluindo…';
+  loadStart();
+  try {
+    await supa(`aportes?id_aporte=eq.${deletingAporte}`, { method: 'DELETE' });
+    toast('Aporte excluído.');
+    closeModal('confirmAporteModal');
+    deletingAporte = null;
+    await loadAportes();
+    await loadBalanco();
+  } catch(e) { toast('Erro: ' + e.message, true); }
+  btn.disabled = false; btn.textContent = 'Excluir';
+  loadDone();
 }
 
 document.getElementById('mesRef').value = currentFiscalMonth();
