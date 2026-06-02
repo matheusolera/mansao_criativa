@@ -57,6 +57,10 @@
     .kpi-label { font-family: var(--font-body); font-size: .78rem; color: var(--text-mid); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .05em; }
     .kpi-value { font-family: var(--font-display); font-size: 1.8rem; color: var(--text-dark); letter-spacing: .01em; line-height: 1.1; }
     .kpi-sub { font-family: var(--font-body); font-size: .76rem; color: var(--text-mid); margin-top: 6px; }
+    .kpi-transfer { font-family: var(--font-body); font-size: .74rem; color: #2e7d32; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--card-border); }
+    .ap-tag { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: .68rem; font-family: var(--font-body); margin-left: 4px; }
+    .ap-tag.manual { background: #e3f0fb; color: #1565c0; }
+    .ap-tag.lucro  { background: #d4edd4; color: #2e7d32; }
     .kpi-card.income .kpi-value { color: #2e7d32; }
     .kpi-card.expense .kpi-value { color: #b71c1c; }
     .kpi-card.profit-pos .kpi-value { color: #2e7d32; }
@@ -165,6 +169,7 @@
       <div class="kpi-label">Lucro Operacional</div>
       <div class="kpi-value" id="k-lucro">R$ 0,00</div>
       <div class="kpi-sub" id="k-lucro-pct">— % do faturamento</div>
+      <div class="kpi-transfer" id="k-lucro-transfer" style="display:none"></div>
     </div>
   </div>
 
@@ -219,6 +224,30 @@
       <button class="btn" id="btnAporte" onclick="saveAporte()">+ Registrar Aporte</button>
     </div>
 
+    <!-- TRANSFERIR DO LUCRO -->
+    <div class="sub-section">
+      <h3>Transferir do Lucro Operacional</h3>
+      <p style="font-family:var(--font-body);font-size:.82rem;color:var(--text-mid);margin-bottom:14px;margin-top:-6px">
+        Transfira todo ou parte do lucro deste mês para o saldo acumulado de compras.
+      </p>
+      <div id="lucro-box" style="background:var(--inner-bg);border-radius:12px;padding:14px 18px;margin-bottom:14px;font-family:var(--font-body);font-size:.9rem;display:flex;justify-content:space-between;align-items:center">
+        <span>Lucro operacional de <b id="lt-mes">—</b>:</span>
+        <b id="lt-lucro" style="color:#2e7d32;font-size:1.05rem">R$ 0,00</b>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Valor a transferir (R$) *</label>
+          <input type="number" id="lt-valor" step="0.01" min="0" placeholder="0,00"/>
+        </div>
+        <div class="form-group" style="justify-content:flex-end">
+          <button class="btn btn-secondary" style="margin-top:auto" onclick="preencherLucroTotal()">Transferir tudo</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="btnTransfer" onclick="transferirLucro()">↳ Transferir ao Saldo</button>
+      </div>
+    </div>
+
     <div class="sub-section">
       <h3>Aportes Registrados <span id="ap-total" style="font-family:var(--font-body);font-size:.9rem;color:var(--accent);font-weight:400"></span></h3>
       <div id="ap-list"><div class="empty-state" style="padding:20px">Carregando…</div></div>
@@ -254,13 +283,14 @@ async function loadBalanco() {
 
   loadStart();
   try {
-    const [pedidos, prodPedido, produtos, fixos, vars, paramsArr] = await Promise.all([
+    const [pedidos, prodPedido, produtos, fixos, vars, paramsArr, todosAportesMes] = await Promise.all([
       supa(`pedidos?select=id_pedido,valor,status,data_pedido&status=eq.Finalizado&data_pedido=gte.${inicio}&data_pedido=lte.${fim}`),
       supa('produto_pedido?select=id_pedido,id_produto,quantidade,preco_total'),
       supa('produtos?select=id_produto,nome,custo,preco_unitario'),
       supa('custos_fixos?select=*&order=nome.asc'),
       supa('custos_variaveis?select=*&order=nome.asc'),
       supa(`parametros_financeiros?mes_referencia=eq.${dataMes}`),
+      supa(`aportes?select=valor,tipo,data_aporte&data_aporte=gte.${inicio}&data_aporte=lte.${fim}`),
     ]);
 
     // ── FATURAMENTO ──
@@ -293,6 +323,14 @@ async function loadBalanco() {
     const lucro = faturamento - cpv - reinvestimento - totFixos - totVarsRs;
     const capital = cpv + reinvestimento;
 
+    // Quanto deste mês já foi transferido do lucro (aportes tipo 'lucro' no mês)
+    const lucroTransferido = (todosAportesMes || [])
+      .filter(a => a.tipo === 'lucro')
+      .reduce((s,a) => s + (a.valor || 0), 0);
+
+    // Guarda no estado para o modal de transferência usar
+    estadoMes = { mes, lucro, lucroTransferido };
+
     // ── RENDER KPIs ──
     document.getElementById('k-capital').textContent      = 'R$ ' + fmtMoney(capital);
     document.getElementById('k-faturamento').textContent  = 'R$ ' + fmtMoney(faturamento);
@@ -305,6 +343,15 @@ async function loadBalanco() {
     document.getElementById('k-lucro-pct').textContent = pctLucro.toFixed(1).replace('.', ',') + '% do faturamento';
     const lucroCard = document.getElementById('k-lucro-card');
     lucroCard.className = 'kpi-card ' + (lucro > 0 ? 'profit-pos' : lucro < 0 ? 'profit-neg' : 'neutral');
+
+    // Linha de transferência (só aparece se houve transferência neste mês)
+    const transferEl = document.getElementById('k-lucro-transfer');
+    if (lucroTransferido > 0) {
+      transferEl.style.display = 'block';
+      transferEl.innerHTML = `↳ R$ ${fmtMoney(lucroTransferido)} transferido ao saldo`;
+    } else {
+      transferEl.style.display = 'none';
+    }
 
     // ── BREAKDOWN ──
     renderBreakdown('d-fixos', fixos || [], 't-fixos', 'R$', null);
@@ -548,6 +595,7 @@ function renderBreakdown(elId, items, totalId, unidade, faturamento) {
 
 // ── APORTES (fundos manuais) ──
 let aportesList = [], deletingAporte = null;
+let estadoMes = { mes: null, lucro: 0, lucroTransferido: 0 };
 
 function openModal(id)  { document.getElementById(id).classList.add('visible'); }
 function closeModal(id) { document.getElementById(id).classList.remove('visible'); }
@@ -556,8 +604,50 @@ async function openAportes() {
   document.getElementById('ap-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('ap-valor').value = '';
   document.getElementById('ap-desc').value = '';
+  // Preenche a seção de transferência de lucro com o estado do mês visualizado
+  const lucroDisp = Math.max(0, estadoMes.lucro - estadoMes.lucroTransferido);
+  document.getElementById('lt-mes').textContent = estadoMes.mes ? nomeMesExt(estadoMes.mes) : '—';
+  document.getElementById('lt-lucro').textContent = 'R$ ' + fmtMoney(lucroDisp);
+  document.getElementById('lt-valor').value = '';
   openModal('aportesModal');
   await loadAportes();
+}
+
+function preencherLucroTotal() {
+  const lucroDisp = Math.max(0, estadoMes.lucro - estadoMes.lucroTransferido);
+  document.getElementById('lt-valor').value = lucroDisp > 0 ? lucroDisp.toFixed(2) : '';
+}
+
+async function transferirLucro() {
+  const valor = parseFloat(document.getElementById('lt-valor').value) || 0;
+  const lucroDisp = Math.max(0, estadoMes.lucro - estadoMes.lucroTransferido);
+
+  if (valor <= 0) { toast('Informe um valor maior que zero.', true); return; }
+  if (estadoMes.lucro <= 0) { toast('Não há lucro operacional para transferir neste mês.', true); return; }
+  if (valor > lucroDisp + 0.001) {
+    toast(`Valor acima do lucro disponível (R$ ${fmtMoney(lucroDisp)}).`, true);
+    return;
+  }
+
+  // O aporte cai no mês visualizado — usa o dia de fechamento como data
+  const { inicio } = fiscalRange(estadoMes.mes);
+  const descricao = `Lucro operacional de ${nomeMesExt(estadoMes.mes)}`;
+
+  const btn = document.getElementById('btnTransfer');
+  btn.disabled = true; btn.textContent = 'Transferindo…';
+  loadStart();
+  try {
+    await supa('aportes', { method: 'POST', body: JSON.stringify({ data_aporte: inicio, valor, descricao, tipo: 'lucro' }) });
+    toast('Lucro transferido ao saldo!');
+    await loadAportes();
+    await loadBalanco();
+    // reabrir estado atualizado da seção de lucro
+    const novoDisp = Math.max(0, estadoMes.lucro - estadoMes.lucroTransferido);
+    document.getElementById('lt-lucro').textContent = 'R$ ' + fmtMoney(novoDisp);
+    document.getElementById('lt-valor').value = '';
+  } catch(e) { toast('Erro: ' + e.message, true); }
+  btn.disabled = false; btn.textContent = '↳ Transferir ao Saldo';
+  loadDone();
 }
 
 async function loadAportes() {
@@ -579,14 +669,17 @@ function renderAportes() {
     list.innerHTML = '<div class="empty-state" style="padding:20px">Nenhum aporte registrado ainda.</div>';
     return;
   }
-  list.innerHTML = aportesList.map(a => `
+  list.innerHTML = aportesList.map(a => {
+    const isLucro = a.tipo === 'lucro';
+    const tag = isLucro ? '<span class="ap-tag lucro">Lucro</span>' : '<span class="ap-tag manual">Manual</span>';
+    return `
     <div class="sub-row" style="grid-template-columns:110px 1fr 130px 40px;align-items:center">
       <span style="font-family:var(--font-body);font-size:.85rem;color:var(--text-mid)">${fmtDate(a.data_aporte)}</span>
-      <span style="font-family:var(--font-body);font-size:.88rem">${a.descricao || '—'}</span>
+      <span style="font-family:var(--font-body);font-size:.88rem">${a.descricao || '—'}${tag}</span>
       <span style="font-family:var(--font-body);font-size:.9rem;color:#2e7d32;font-weight:700;text-align:right">R$ ${fmtMoney(a.valor)}</span>
       <button class="btn-remove" onclick="openDelAporte(${a.id_aporte})" title="Excluir">✕</button>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 async function saveAporte() {
@@ -600,7 +693,7 @@ async function saveAporte() {
   btn.disabled = true; btn.textContent = 'Registrando…';
   loadStart();
   try {
-    await supa('aportes', { method: 'POST', body: JSON.stringify({ data_aporte, valor, descricao }) });
+    await supa('aportes', { method: 'POST', body: JSON.stringify({ data_aporte, valor, descricao, tipo: 'manual' }) });
     toast('Aporte registrado!');
     document.getElementById('ap-valor').value = '';
     document.getElementById('ap-desc').value = '';
