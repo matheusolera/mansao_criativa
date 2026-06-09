@@ -53,7 +53,7 @@
 <script src="shared.js"></script>
 <script>
 if (!requireAuth()) throw new Error("redirect");
-renderUserBar();
+setupMobileMenu();
 
 function barCfg(labels, data, opts={}) {
   return {

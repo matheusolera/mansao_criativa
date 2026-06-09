@@ -94,7 +94,7 @@
 <script src="shared.js"></script>
 <script>
 if (!requireAuth()) throw new Error("redirect");
-renderUserBar();
+setupMobileMenu();
 
 let allData=[], filtered=[], editingId=null, deletingId=null, currentPage=1;
 let sortCol='nome', sortDir='asc';
