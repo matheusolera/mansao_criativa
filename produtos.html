@@ -34,9 +34,26 @@
       Novo Produto
     </button>
   </div>
+  <div class="sort-bar">
+    <label>Ordenar:</label>
+    <select id="sortSelect" onchange="setSortFromBar()">
+      <option value="nome">Nome</option>
+      <option value="preco_unitario">Preço Unit.</option>
+      <option value="custo">Custo</option>
+      <option value="tecnica">Técnica</option>
+      <option value="id_produto">ID</option>
+    </select>
+    <button onclick="toggleSortDir()" id="sortDirBtn" title="Inverter ordem">↑</button>
+  </div>
   <div class="table-container">
     <div class="tbl-header tbl-produtos">
-      <span class="left">ID</span><span class="left">Nome</span><span>Preço Unit.</span><span>Custo</span><span>Técnica</span><span>Insumo</span><span>Ações</span>
+      <span class="left sortable" onclick="setSort('id_produto')" data-col="id_produto">ID <span class="sort-arrow"></span></span>
+      <span class="left sortable" onclick="setSort('nome')" data-col="nome">Nome <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('preco_unitario')" data-col="preco_unitario">Preço Unit. <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('custo')" data-col="custo">Custo <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('tecnica')" data-col="tecnica">Técnica <span class="sort-arrow"></span></span>
+      <span>Insumo</span>
+      <span>Ações</span>
     </div>
     <div id="data-list"><div class="empty-state">Carregando produtos…</div></div>
   </div>
@@ -83,6 +100,7 @@ if (!requireAuth()) throw new Error("redirect");
 renderUserBar();
 
 let allData=[], filtered=[], insumos=[], editingId=null, deletingId=null, currentPage=1;
+let sortCol='nome', sortDir='asc';
 const PAGE=15;
 
 async function loadAll() {
@@ -95,6 +113,7 @@ async function loadAll() {
     allData = prod || []; insumos = ins || [];
     filtered = [...allData];
     populateInsumoSelect();
+    applySort();
     render();
   } catch(e) { toast('Erro: ' + e.message, true); document.getElementById('data-list').innerHTML = `<div class="empty-state">Erro: ${e.message}</div>`; }
   loadDone();
@@ -106,9 +125,41 @@ function populateInsumoSelect(selId = '') {
 
 function getInsumoNome(id) { const i = insumos.find(x => x.id_insumo === id); return i ? i.nome : '—'; }
 
+function setSort(col) {
+  if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortCol = col; sortDir = 'asc'; }
+  syncSortBar(); applySort(); render();
+}
+function setSortFromBar() { sortCol = document.getElementById('sortSelect').value; applySort(); render(); }
+function toggleSortDir() { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; document.getElementById('sortDirBtn').textContent = sortDir === 'asc' ? '↑' : '↓'; applySort(); render(); }
+function syncSortBar() {
+  const sel = document.getElementById('sortSelect'); if (sel) sel.value = sortCol;
+  const b = document.getElementById('sortDirBtn'); if (b) b.textContent = sortDir === 'asc' ? '↑' : '↓';
+}
+function applySort() {
+  const dir = sortDir === 'asc' ? 1 : -1;
+  filtered.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+    if (va < vb) return -1 * dir;
+    if (va > vb) return  1 * dir;
+    return 0;
+  });
+  document.querySelectorAll('.tbl-header .sortable').forEach(el => {
+    const active = el.dataset.col === sortCol;
+    el.classList.toggle('active', active);
+    el.classList.toggle('asc', active && sortDir === 'asc');
+  });
+}
+
 function filterData() {
   const q = document.getElementById('searchInput').value.toLowerCase().trim();
   filtered = q ? allData.filter(x => x.nome.toLowerCase().includes(q) || (x.tecnica || '').toLowerCase().includes(q)) : [...allData];
+  applySort();
   currentPage = 1; render();
 }
 
@@ -119,12 +170,12 @@ function render() {
   const page = filtered.slice(start, start + PAGE);
   el.innerHTML = page.map(r => `
     <div class="data-row tbl-produtos">
-      <span class="id-cell">#${r.id_produto}</span>
-      <span class="left">${r.nome}</span>
-      <span>R$ ${fmtMoney(r.preco_unitario)}</span>
-      <span>R$ ${fmtMoney(r.custo)}</span>
-      <span>${r.tecnica || '—'}</span>
-      <span>${getInsumoNome(r.id_insumo)}</span>
+      <span class="id-cell" data-label="ID">#${r.id_produto}</span>
+      <span class="left" data-label="Nome">${r.nome}</span>
+      <span data-label="Preço Unit.">R$ ${fmtMoney(r.preco_unitario)}</span>
+      <span data-label="Custo">R$ ${fmtMoney(r.custo)}</span>
+      <span data-label="Técnica">${r.tecnica || '—'}</span>
+      <span data-label="Insumo">${getInsumoNome(r.id_insumo)}</span>
       <span class="row-actions">
         <button class="btn-icon btn-edit-icon" onclick="openEdit(${r.id_produto})" title="Editar"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5L11.5 4.5L5 11H3v-2L9.5 2.5Z" stroke="#856404" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
         <button class="btn-icon btn-del-icon" onclick="openDel(${r.id_produto})" title="Excluir"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>

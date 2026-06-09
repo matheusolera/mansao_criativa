@@ -36,14 +36,25 @@
     </button>
   </div>
 
+  <div class="sort-bar">
+    <label>Ordenar:</label>
+    <select id="sortSelect" onchange="setSortFromBar()">
+      <option value="data_compra">Data</option>
+      <option value="fornecedor">Fornecedor</option>
+      <option value="valor_transporte">Transporte</option>
+      <option value="id_compra">ID</option>
+    </select>
+    <button onclick="toggleSortDir()" id="sortDirBtn" title="Inverter ordem">↑</button>
+  </div>
+
   <div class="table-container">
     <div class="tbl-header tbl-compras">
       <span class="left"></span>
-      <span class="left">ID</span>
-      <span>Data</span>
-      <span>Fornecedor</span>
+      <span class="left sortable" onclick="setSort('id_compra')" data-col="id_compra">ID <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('data_compra')" data-col="data_compra">Data <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('fornecedor')" data-col="fornecedor">Fornecedor <span class="sort-arrow"></span></span>
       <span>Itens (R$)</span>
-      <span>Transporte</span>
+      <span class="sortable" onclick="setSort('valor_transporte')" data-col="valor_transporte">Transporte <span class="sort-arrow"></span></span>
       <span>Total</span>
       <span>Ações</span>
     </div>
@@ -121,6 +132,7 @@ renderUserBar();
 
 let allData=[], filtered=[], fornecedores=[], insumos=[], expandCache={}, expandedIds=new Set();
 let editingId=null, deletingId=null, currentPage=1;
+let sortCol='data_compra', sortDir='desc';
 const PAGE=15;
 
 async function loadAll() {
@@ -133,6 +145,7 @@ async function loadAll() {
     ]);
     allData = comp || []; fornecedores = forn || []; insumos = ins || [];
     filtered = [...allData];
+    applySort();
     render();
   } catch(e) { toast('Erro: ' + e.message, true); document.getElementById('data-list').innerHTML = `<div class="empty-state">Erro: ${e.message}</div>`; }
   loadDone();
@@ -147,12 +160,46 @@ function insumoNome(id) {
   return i ? i.nome : '—';
 }
 
+function setSort(col) {
+  if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortCol = col; sortDir = 'asc'; }
+  syncSortBar(); applySort(); render();
+}
+function setSortFromBar() { sortCol = document.getElementById('sortSelect').value; applySort(); render(); }
+function toggleSortDir() { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; document.getElementById('sortDirBtn').textContent = sortDir === 'asc' ? '↑' : '↓'; applySort(); render(); }
+function syncSortBar() {
+  const sel = document.getElementById('sortSelect'); if (sel) sel.value = sortCol;
+  const b = document.getElementById('sortDirBtn'); if (b) b.textContent = sortDir === 'asc' ? '↑' : '↓';
+}
+function applySort() {
+  const dir = sortDir === 'asc' ? 1 : -1;
+  filtered.sort((a, b) => {
+    let va, vb;
+    if (sortCol === 'fornecedor') { va = fornecedorNome(a.id_fornecedor).toLowerCase(); vb = fornecedorNome(b.id_fornecedor).toLowerCase(); }
+    else { va = a[sortCol]; vb = b[sortCol]; }
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+    if (va < vb) return -1 * dir;
+    if (va > vb) return  1 * dir;
+    return 0;
+  });
+  document.querySelectorAll('.tbl-header .sortable').forEach(el => {
+    const active = el.dataset.col === sortCol;
+    el.classList.toggle('active', active);
+    el.classList.toggle('asc', active && sortDir === 'asc');
+  });
+}
+
 function filterData() {
   const q = document.getElementById('searchInput').value.toLowerCase().trim();
   filtered = q ? allData.filter(c =>
     fornecedorNome(c.id_fornecedor).toLowerCase().includes(q) ||
     (c.observacao || '').toLowerCase().includes(q)
   ) : [...allData];
+  applySort();
   currentPage = 1;
   render();
 }
@@ -202,17 +249,17 @@ function render() {
 
     return `<div class="order-block">
       <div class="data-row tbl-compras">
-        <span class="left">
+        <span class="left toggle-span" data-label="Detalhes">
           <button class="toggle-btn ${isExp ? 'open' : ''}" onclick="toggleExp(${c.id_compra})">
             <svg width="12" height="8" viewBox="0 0 12 8"><path d="M1 1l5 5 5-5" stroke="#5C2E28" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
           </button>
         </span>
-        <span class="id-cell">#${c.id_compra}</span>
-        <span>${fmtDate(c.data_compra)}</span>
-        <span>${fornecedorNome(c.id_fornecedor)}</span>
-        <span>${cached ? 'R$ ' + fmtMoney(subtotal) : '…'}</span>
-        <span>R$ ${fmtMoney(transporte)}</span>
-        <span style="color:var(--accent);font-weight:700">${cached ? 'R$ ' + fmtMoney(total) : '…'}</span>
+        <span class="id-cell" data-label="ID">#${c.id_compra}</span>
+        <span data-label="Data">${fmtDate(c.data_compra)}</span>
+        <span data-label="Fornecedor">${fornecedorNome(c.id_fornecedor)}</span>
+        <span data-label="Itens (R$)">${cached ? 'R$ ' + fmtMoney(subtotal) : '…'}</span>
+        <span data-label="Transporte">R$ ${fmtMoney(transporte)}</span>
+        <span data-label="Total" style="color:var(--accent);font-weight:700">${cached ? 'R$ ' + fmtMoney(total) : '…'}</span>
         <span class="row-actions">
           <button class="btn-icon btn-edit-icon" onclick="openEdit(${c.id_compra})" title="Editar"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5L11.5 4.5L5 11H3v-2L9.5 2.5Z" stroke="#856404" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
           <button class="btn-icon btn-del-icon" onclick="openDel(${c.id_compra})" title="Excluir"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
