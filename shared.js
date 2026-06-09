@@ -171,22 +171,42 @@ function buildPagination(containerId, currentPage, totalItems, pageSize, onGo) {
   container.innerHTML = btns;
 }
 
-// ── USER INFO + LOGOUT BUTTON ──
-function renderUserBar() {
-  const s = getSession();
-  if (!s || !s.user) return;
+// ── MENU HAMBÚRGUER (mobile) ──
+// Injeta o botão e o overlay, e liga os eventos. Chamado automaticamente.
+function setupMobileMenu() {
   const sidebar = document.querySelector('.sidebar');
-  if (!sidebar || document.getElementById('userBar')) return;
-  const div = document.createElement('div');
-  div.id = 'userBar';
-  div.className = 'user-bar';
-  const initial = (s.user.email || '?').charAt(0).toUpperCase();
-  div.innerHTML = `
-    <div class="user-avatar">${initial}</div>
-    <div class="user-info">
-      <div class="user-email">${s.user.email}</div>
-      <button class="user-logout" onclick="logout()">Sair</button>
-    </div>
-  `;
-  sidebar.appendChild(div);
+  if (!sidebar || document.getElementById('menuToggle')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'menuToggle';
+  btn.className = 'menu-toggle';
+  btn.setAttribute('aria-label', 'Abrir menu');
+  btn.innerHTML = '<span></span>';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'sidebarOverlay';
+  overlay.className = 'sidebar-overlay';
+
+  function toggle(open) {
+    const isOpen = open === undefined ? !sidebar.classList.contains('open') : open;
+    sidebar.classList.toggle('open', isOpen);
+    overlay.classList.toggle('visible', isOpen);
+    btn.classList.toggle('open', isOpen);
+  }
+
+  btn.addEventListener('click', () => toggle());
+  overlay.addEventListener('click', () => toggle(false));
+  // Fecha ao clicar num link da navegação
+  sidebar.querySelectorAll('nav a').forEach(a => a.addEventListener('click', () => toggle(false)));
+
+  document.body.appendChild(btn);
+  document.body.appendChild(overlay);
 }
+
+// Chama o setup assim que o DOM estiver pronto
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupMobileMenu);
+} else {
+  setupMobileMenu();
+}
+
