@@ -284,7 +284,7 @@ async function loadBalanco() {
   loadStart();
   try {
     const [pedidos, prodPedido, produtos, fixos, vars, paramsArr, todosAportesMes] = await Promise.all([
-      supa(`pedidos?select=id_pedido,valor,status,data_pedido&status=eq.Finalizado&data_pedido=gte.${inicio}&data_pedido=lte.${fim}`),
+      supa(`pedidos?select=id_pedido,valor,status,data_recebimento&status=eq.Finalizado&data_recebimento=gte.${inicio}&data_recebimento=lte.${fim}`),
       supa('produto_pedido?select=id_pedido,id_produto,quantidade,preco_total'),
       supa('produtos?select=id_produto,nome,custo,preco_unitario'),
       supa('custos_fixos?select=*&order=nome.asc'),
@@ -390,14 +390,14 @@ function nomeMesExt(mesStr) {
 // Calcula o orçamento do mês `mesAlvo` e o saldo acumulado percorrendo
 // todos os meses desde o primeiro pedido/compra até o mês visualizado.
 async function computeBudget(mesAlvo, produtos) {
-  // 1) Descobrir o primeiro mês com dados (pedido, compra ou aporte mais antigo)
+  // 1) Descobrir o primeiro mês com dados (recebimento de pedido, compra ou aporte mais antigo)
   const [primPedido, primCompra, primAporte] = await Promise.all([
-    supa('pedidos?select=data_pedido&status=eq.Finalizado&order=data_pedido.asc&limit=1'),
+    supa('pedidos?select=data_recebimento&status=eq.Finalizado&data_recebimento=not.is.null&order=data_recebimento.asc&limit=1'),
     supa('compras?select=data_compra&order=data_compra.asc&limit=1'),
     supa('aportes?select=data_aporte&order=data_aporte.asc&limit=1'),
   ]);
   const datas = [];
-  if (primPedido && primPedido[0]) datas.push(primPedido[0].data_pedido);
+  if (primPedido && primPedido[0]) datas.push(primPedido[0].data_recebimento);
   if (primCompra && primCompra[0]) datas.push(primCompra[0].data_compra);
   if (primAporte && primAporte[0]) datas.push(primAporte[0].data_aporte);
 
@@ -414,7 +414,7 @@ async function computeBudget(mesAlvo, produtos) {
 
   // 2) Carregar tudo o que precisamos de uma vez (todos os meses)
   const [todosPedidos, todoProdPedido, todasCompras, todosParams, todosAportes] = await Promise.all([
-    supa('pedidos?select=id_pedido,valor,status,data_pedido&status=eq.Finalizado'),
+    supa('pedidos?select=id_pedido,valor,status,data_recebimento&status=eq.Finalizado'),
     supa('produto_pedido?select=id_pedido,id_produto,quantidade'),
     supa('compras?select=id_compra,valor_transporte,data_compra'),
     supa('parametros_financeiros?select=mes_referencia,taxa_reinvestimento'),
@@ -434,7 +434,7 @@ async function computeBudget(mesAlvo, produtos) {
   // Funções auxiliares por mês
   function faturamentoDoMes(mesStr) {
     const { inicio, fim } = fiscalRange(mesStr);
-    return (todosPedidos || []).filter(p => p.data_pedido >= inicio && p.data_pedido <= fim);
+    return (todosPedidos || []).filter(p => p.data_recebimento && p.data_recebimento >= inicio && p.data_recebimento <= fim);
   }
   function cpvDoMes(pedidosDoMes) {
     const ids = new Set(pedidosDoMes.map(p => p.id_pedido));
