@@ -252,6 +252,22 @@ h1.page-title { font-family: var(--font-display); font-size: 3.2rem; font-weight
   /* Toggle de expansão (pedidos/insumos/compras) */
   .data-row .toggle-btn { width: 38px; height: 38px; }
 
+  /* ── ESTRUTURAS EXPANSÍVEIS (pedidos / insumos / compras) ── */
+  .order-block { margin-bottom: 12px; }
+  /* O toggle vira a primeira linha do card, com rótulo "Detalhes" e o botão à direita */
+  .data-row .toggle-span { border-bottom: 1px solid rgba(192,135,122,.18); }
+  .data-row .toggle-span .toggle-btn { margin-left: auto; }
+  /* status select ocupa a largura confortável no card */
+  .data-row .status-wrap select { width: auto; min-width: 130px; }
+  /* a seção expandida encosta no card de cima e ganha respiro */
+  .expand-section { margin-top: -8px; margin-bottom: 0; border-radius: 0 0 14px 14px; }
+  .expand-section .mini-row { grid-template-columns: 1fr auto !important; }
+  /* mini-header das tabelas internas some no mobile; cada item vira rótulo:valor */
+  .expand-section .mini-header { display: none !important; }
+  .expand-section .mini-row { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: .85rem; }
+  /* expand-grid (insumos: produtos + fornecedores lado a lado) empilha */
+  .expand-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+
   /* Paginação */
   .pagination { gap: 6px; }
   .page-btn { padding: 8px 14px; }
@@ -265,8 +281,9 @@ h1.page-title { font-family: var(--font-display); font-size: 3.2rem; font-weight
 
   /* Sub-linhas de produtos/itens nos modais empilham melhor */
   .sub-col-header { display: none; }
-  .sub-row { grid-template-columns: 1fr 1fr !important; gap: 8px; padding: 12px; background: var(--card-bg); border-radius: 10px; margin-bottom: 12px; position: relative; }
-  .sub-row > * { grid-column: auto; }
+  .sub-row { grid-template-columns: 1fr !important; gap: 10px; padding: 12px; background: var(--card-bg); border-radius: 10px; margin-bottom: 12px; position: relative; }
+  .sub-row > * { grid-column: auto; width: 100%; }
+  .sub-row .btn-remove { width: 38px; height: 38px; justify-self: end; }
 
   /* Ordenação: setas sempre visíveis no mobile (não há hover) */
   .tbl-header span.sortable .sort-arrow { opacity: .5; }

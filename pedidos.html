@@ -36,6 +36,20 @@
     </button>
   </div>
 
+  <div class="sort-bar">
+    <label>Ordenar:</label>
+    <select id="sortSelect" onchange="setSortFromBar()">
+      <option value="id_pedido">Nº Pedido</option>
+      <option value="valor">Valor</option>
+      <option value="forma_pagamento">Pagamento</option>
+      <option value="cliente">Cliente</option>
+      <option value="data_pedido">Data Pedido</option>
+      <option value="data_recebimento">Data Receb.</option>
+      <option value="status">Status</option>
+    </select>
+    <button onclick="toggleSortDir()" id="sortDirBtn" title="Inverter ordem">↑</button>
+  </div>
+
   <div class="table-container">
     <div class="tbl-header tbl-pedidos">
       <span class="left"></span>
@@ -144,8 +158,15 @@ function setSort(col) {
     sortCol = col;
     sortDir = 'asc';
   }
+  syncSortBar();
   applySort();
   render();
+}
+function setSortFromBar() { sortCol = document.getElementById('sortSelect').value; applySort(); render(); }
+function toggleSortDir() { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; document.getElementById('sortDirBtn').textContent = sortDir === 'asc' ? '↑' : '↓'; applySort(); render(); }
+function syncSortBar() {
+  const sel = document.getElementById('sortSelect'); if (sel) sel.value = sortCol;
+  const b = document.getElementById('sortDirBtn'); if (b) b.textContent = sortDir === 'asc' ? '↑' : '↓';
 }
 
 function applySort() {
@@ -249,18 +270,18 @@ function render() {
 
     return `<div class="order-block">
       <div class="data-row tbl-pedidos">
-        <span class="left">
+        <span class="left toggle-span" data-label="Detalhes">
           <button class="toggle-btn ${isExp ? 'open' : ''}" onclick="toggleExp(${o.id_pedido})">
             <svg width="12" height="8" viewBox="0 0 12 8"><path d="M1 1l5 5 5-5" stroke="#5C2E28" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
           </button>
         </span>
-        <span class="id-cell">#${o.id_pedido}</span>
-        <span>R$ ${fmtMoney(o.valor)}</span>
-        <span>${o.forma_pagamento || '—'}</span>
-        <span>${clienteNome(o.id_cliente)}</span>
-        <span>${fmtDate(o.data_pedido)}</span>
-        <span>${fmtDate(o.data_recebimento)}</span>
-        <span class="status-wrap">
+        <span class="id-cell" data-label="Nº Pedido">#${o.id_pedido}</span>
+        <span data-label="Valor">R$ ${fmtMoney(o.valor)}</span>
+        <span data-label="Pagamento">${o.forma_pagamento || '—'}</span>
+        <span data-label="Cliente">${clienteNome(o.id_cliente)}</span>
+        <span data-label="Data Pedido">${fmtDate(o.data_pedido)}</span>
+        <span data-label="Data Receb.">${fmtDate(o.data_recebimento)}</span>
+        <span class="status-wrap" data-label="Status">
           <select class="status-select ${sk}" onchange="changeStatus(event,${o.id_pedido})">
             <option value="Pendente"   ${o.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
             <option value="Finalizado" ${o.status === 'Finalizado' ? 'selected' : ''}>Finalizado</option>
