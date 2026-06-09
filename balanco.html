@@ -285,7 +285,6 @@
 <script src="shared.js"></script>
 <script>
 if (!requireAuth()) throw new Error("redirect");
-setupMobileMenu();
 
 async function loadBalanco() {
   const mes = document.getElementById('mesRef').value || currentFiscalMonth();
