@@ -85,7 +85,6 @@
 <script src="shared.js"></script>
 <script>
 if (!requireAuth()) throw new Error("redirect");
-renderUserBar();
 
 let allData=[], filtered=[], fornecedores=[], produtos=[], expandedIds=new Set(), expandCache={};
 let editingId=null, deletingId=null, currentPage=1;

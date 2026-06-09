@@ -81,7 +81,6 @@
 <script src="shared.js"></script>
 <script>
 if (!requireAuth()) throw new Error("redirect");
-renderUserBar();
 
 let allData=[], filtered=[], editingId=null, deletingId=null, currentPage=1;
 const PAGE=15;
