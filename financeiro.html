@@ -44,6 +44,20 @@
     .calc-result.invalid .value { color: #b71c1c; font-size: 1.1rem; }
     .formula-info { font-family: var(--font-body); font-size: .75rem; color: var(--text-mid); margin-top: 8px; line-height: 1.5; }
     .save-bar { position: sticky; bottom: 16px; background: rgba(247,240,232,0.95); backdrop-filter: blur(6px); padding: 16px; border-radius: 14px; border: 1.5px solid var(--card-border); display: flex; justify-content: flex-end; gap: 12px; margin-top: 28px; box-shadow: 0 -4px 20px rgba(0,0,0,.05); }
+
+    @media (max-width: 820px) {
+      .config-grid { grid-template-columns: 1fr; gap: 20px; }
+      .double-list { grid-template-columns: 1fr; gap: 20px; }
+      /* Linhas de custo viram blocos empilhados */
+      .cost-grid-header { display: none; }
+      .cost-row { grid-template-columns: 1fr auto; gap: 8px 10px; padding: 12px; background: var(--inner-bg); border-radius: 10px; margin-bottom: 10px; }
+      .cost-row input.c-nome { grid-column: 1 / -1; }
+      .cost-row .input-money, .cost-row input.valor { min-width: 0; }
+      .save-bar { flex-direction: column; }
+      .save-bar .btn { width: 100%; justify-content: center; }
+      .month-bar { flex-wrap: wrap; }
+      .input-money.narrow { max-width: none; }
+    }
   </style>
 </head>
 <body>
