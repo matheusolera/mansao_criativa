@@ -36,20 +36,6 @@
     </button>
   </div>
 
-  <div class="sort-bar">
-    <label>Ordenar:</label>
-    <select id="sortSelect" onchange="setSortFromBar()">
-      <option value="id_pedido">Nº Pedido</option>
-      <option value="valor">Valor</option>
-      <option value="forma_pagamento">Pagamento</option>
-      <option value="cliente">Cliente</option>
-      <option value="data_pedido">Data Pedido</option>
-      <option value="data_recebimento">Data Receb.</option>
-      <option value="status">Status</option>
-    </select>
-    <button onclick="toggleSortDir()" id="sortDirBtn" title="Inverter ordem">↑</button>
-  </div>
-
   <div class="table-container">
     <div class="tbl-header tbl-pedidos">
       <span class="left"></span>
@@ -159,15 +145,8 @@ function setSort(col) {
     sortCol = col;
     sortDir = 'asc';
   }
-  syncSortBar();
   applySort();
   render();
-}
-function setSortFromBar() { sortCol = document.getElementById('sortSelect').value; applySort(); render(); }
-function toggleSortDir() { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; document.getElementById('sortDirBtn').textContent = sortDir === 'asc' ? '↑' : '↓'; applySort(); render(); }
-function syncSortBar() {
-  const sel = document.getElementById('sortSelect'); if (sel) sel.value = sortCol;
-  const b = document.getElementById('sortDirBtn'); if (b) b.textContent = sortDir === 'asc' ? '↑' : '↓';
 }
 
 function applySort() {
@@ -213,7 +192,6 @@ async function loadAll() {
     ]);
     allData = ped || []; clientes = cli || []; produtos = prod || [];
     custosFixos = fixos || []; custosVars = vars || []; parametros = params || [];
-    // Pré-calcula totais que não mudam por mês
     totalFixosGlobal = custosFixos.reduce((s,c) => s + (parseFloat(c.valor) || 0), 0);
     totalVarsPctGlobal = custosVars.reduce((s,c) => s + (parseFloat(c.valor) || 0), 0);
     filtered = [...allData];
@@ -223,14 +201,11 @@ async function loadAll() {
   loadDone();
 }
 
-// Custo unitário de um produto
 function custoProduto(id) {
   const p = produtos.find(x => x.id_produto === id);
   return p ? (parseFloat(p.custo) || 0) : 0;
 }
 
-// Reúne os parâmetros financeiros de um mês contábil (yyyy-mm)
-// Retorna as frações e um flag indicando se os parâmetros do mês existem.
 function paramsDoMes(mesStr) {
   const dataMes = `${mesStr}-01`;
   const p = parametros.find(x => (x.mes_referencia || '').slice(0,10) === dataMes);
@@ -245,22 +220,16 @@ function paramsDoMes(mesStr) {
   };
 }
 
-// Calcula o lucro real de um pedido a partir dos seus itens (produto_pedido).
-// Retorna { lucroReais, lucroPct, incompleto, itens: [{id_produto, lucroPctItem, lucroReaisItem}] }
 function calcularLucroPedido(pedido, itens) {
-  // Mês contábil da venda = mês do recebimento
   const semRecebimento = !pedido.data_recebimento;
   const mes = semRecebimento ? null : fiscalMonthOf(pedido.data_recebimento);
   const pr = mes ? paramsDoMes(mes) : { existe: false, fracVar: totalVarsPctGlobal/100, fracReinv: 0, fracFixo: 0, temFaturamento: false };
-
-  // incompleto se não há recebimento, ou não há parâmetros do mês, ou faturamento base ausente
   const incompleto = semRecebimento || !pr.existe || !pr.temFaturamento;
 
   let somaLucroReais = 0, somaVenda = 0;
   const itensCalc = itens.map(it => {
-    const receita = parseFloat(it.preco_total) || 0;          // o que foi cobrado
+    const receita = parseFloat(it.preco_total) || 0;
     const custo   = custoProduto(it.id_produto) * (parseFloat(it.quantidade) || 0);
-    // lucro real% = 1 − custo/receita − variáveis% − reinvest% − fixos/faturamento
     const fracCusto = receita > 0 ? (custo / receita) : 0;
     const lucroPctItem = 1 - fracCusto - pr.fracVar - pr.fracReinv - pr.fracFixo;
     const lucroReaisItem = receita * lucroPctItem;
@@ -269,10 +238,8 @@ function calcularLucroPedido(pedido, itens) {
     return { id_produto: it.id_produto, nome: it.produtos?.nome, receita, lucroPctItem, lucroReaisItem };
   });
 
-  // Lucro % da venda = Σ(lucro R$) / valor total da venda (média ponderada)
   const valorTotal = (parseFloat(pedido.valor) || 0) || somaVenda;
   const lucroPct = valorTotal > 0 ? (somaLucroReais / valorTotal) : 0;
-
   return { lucroReais: somaLucroReais, lucroPct, incompleto, itens: itensCalc };
 }
 
@@ -356,18 +323,18 @@ function render() {
 
     return `<div class="order-block">
       <div class="data-row tbl-pedidos">
-        <span class="left toggle-span" data-label="Detalhes">
+        <span class="left">
           <button class="toggle-btn ${isExp ? 'open' : ''}" onclick="toggleExp(${o.id_pedido})">
             <svg width="12" height="8" viewBox="0 0 12 8"><path d="M1 1l5 5 5-5" stroke="#5C2E28" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
           </button>
         </span>
-        <span class="id-cell" data-label="Nº Pedido">#${o.id_pedido}</span>
-        <span data-label="Valor">R$ ${fmtMoney(o.valor)}</span>
-        <span data-label="Pagamento">${o.forma_pagamento || '—'}</span>
-        <span data-label="Cliente">${clienteNome(o.id_cliente)}</span>
-        <span data-label="Data Pedido">${fmtDate(o.data_pedido)}</span>
-        <span data-label="Data Receb.">${fmtDate(o.data_recebimento)}</span>
-        <span class="status-wrap" data-label="Status">
+        <span class="id-cell">#${o.id_pedido}</span>
+        <span>R$ ${fmtMoney(o.valor)}</span>
+        <span>${o.forma_pagamento || '—'}</span>
+        <span>${clienteNome(o.id_cliente)}</span>
+        <span>${fmtDate(o.data_pedido)}</span>
+        <span>${fmtDate(o.data_recebimento)}</span>
+        <span class="status-wrap">
           <select class="status-select ${sk}" onchange="changeStatus(event,${o.id_pedido})">
             <option value="Pendente"   ${o.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
             <option value="Finalizado" ${o.status === 'Finalizado' ? 'selected' : ''}>Finalizado</option>
