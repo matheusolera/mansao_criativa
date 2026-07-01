@@ -36,6 +36,20 @@
     </button>
   </div>
 
+  <div class="sort-bar">
+    <label>Ordenar:</label>
+    <select id="sortSelect" onchange="setSortFromBar()">
+      <option value="id_pedido">Nº Pedido</option>
+      <option value="valor">Valor</option>
+      <option value="forma_pagamento">Pagamento</option>
+      <option value="cliente">Cliente</option>
+      <option value="data_pedido">Data Pedido</option>
+      <option value="data_recebimento">Data Receb.</option>
+      <option value="status">Status</option>
+    </select>
+    <button onclick="toggleSortDir()" id="sortDirBtn" title="Inverter ordem">↑</button>
+  </div>
+
   <div class="table-container">
     <div class="tbl-header tbl-pedidos">
       <span class="left"></span>
@@ -130,10 +144,8 @@
 <script src="shared.js"></script>
 <script>
 if (!requireAuth()) throw new Error("redirect");
-renderUserBar();
 
 let allData=[], filtered=[], clientes=[], produtos=[], expandedIds=new Set(), expandCache={};
-let custosFixos=[], custosVars=[], parametros=[], totalFixosGlobal=0, totalVarsPctGlobal=0;
 let editingId=null, deletingId=null, currentPage=1;
 let sortCol = 'id_pedido', sortDir = 'desc';
 const PAGE=15;
@@ -145,8 +157,15 @@ function setSort(col) {
     sortCol = col;
     sortDir = 'asc';
   }
+  syncSortBar();
   applySort();
   render();
+}
+function setSortFromBar() { sortCol = document.getElementById('sortSelect').value; applySort(); render(); }
+function toggleSortDir() { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; document.getElementById('sortDirBtn').textContent = sortDir === 'asc' ? '↑' : '↓'; applySort(); render(); }
+function syncSortBar() {
+  const sel = document.getElementById('sortSelect'); if (sel) sel.value = sortCol;
+  const b = document.getElementById('sortDirBtn'); if (b) b.textContent = sortDir === 'asc' ? '↑' : '↓';
 }
 
 function applySort() {
@@ -182,65 +201,17 @@ function applySort() {
 async function loadAll() {
   loadStart();
   try {
-    const [ped, cli, prod, fixos, vars, params] = await Promise.all([
+    const [ped, cli, prod] = await Promise.all([
       supa('pedidos?select=*&order=id_pedido.desc'),
       supa('clientes?select=id_cliente,nome,sobrenome&order=nome.asc'),
-      supa('produtos?select=id_produto,nome,preco_unitario,custo&order=nome.asc'),
-      supa('custos_fixos?select=*'),
-      supa('custos_variaveis?select=*'),
-      supa('parametros_financeiros?select=mes_referencia,taxa_reinvestimento,faturamento_base'),
+      supa('produtos?select=id_produto,nome,preco_unitario&order=nome.asc'),
     ]);
     allData = ped || []; clientes = cli || []; produtos = prod || [];
-    custosFixos = fixos || []; custosVars = vars || []; parametros = params || [];
-    totalFixosGlobal = custosFixos.reduce((s,c) => s + (parseFloat(c.valor) || 0), 0);
-    totalVarsPctGlobal = custosVars.reduce((s,c) => s + (parseFloat(c.valor) || 0), 0);
     filtered = [...allData];
     applySort();
     render();
   } catch(e) { toast('Erro: ' + e.message, true); document.getElementById('data-list').innerHTML = `<div class="empty-state">Erro: ${e.message}</div>`; }
   loadDone();
-}
-
-function custoProduto(id) {
-  const p = produtos.find(x => x.id_produto === id);
-  return p ? (parseFloat(p.custo) || 0) : 0;
-}
-
-function paramsDoMes(mesStr) {
-  const dataMes = `${mesStr}-01`;
-  const p = parametros.find(x => (x.mes_referencia || '').slice(0,10) === dataMes);
-  const reinvestPct = p ? (parseFloat(p.taxa_reinvestimento) || 0) : 0;
-  const faturamento = p ? (parseFloat(p.faturamento_base) || 0) : 0;
-  return {
-    existe: !!p,
-    fracVar: totalVarsPctGlobal / 100,
-    fracReinv: reinvestPct / 100,
-    fracFixo: faturamento > 0 ? (totalFixosGlobal / faturamento) : 0,
-    temFaturamento: faturamento > 0,
-  };
-}
-
-function calcularLucroPedido(pedido, itens) {
-  const semRecebimento = !pedido.data_recebimento;
-  const mes = semRecebimento ? null : fiscalMonthOf(pedido.data_recebimento);
-  const pr = mes ? paramsDoMes(mes) : { existe: false, fracVar: totalVarsPctGlobal/100, fracReinv: 0, fracFixo: 0, temFaturamento: false };
-  const incompleto = semRecebimento || !pr.existe || !pr.temFaturamento;
-
-  let somaLucroReais = 0, somaVenda = 0;
-  const itensCalc = itens.map(it => {
-    const receita = parseFloat(it.preco_total) || 0;
-    const custo   = custoProduto(it.id_produto) * (parseFloat(it.quantidade) || 0);
-    const fracCusto = receita > 0 ? (custo / receita) : 0;
-    const lucroPctItem = 1 - fracCusto - pr.fracVar - pr.fracReinv - pr.fracFixo;
-    const lucroReaisItem = receita * lucroPctItem;
-    somaLucroReais += lucroReaisItem;
-    somaVenda += receita;
-    return { id_produto: it.id_produto, nome: it.produtos?.nome, receita, lucroPctItem, lucroReaisItem };
-  });
-
-  const valorTotal = (parseFloat(pedido.valor) || 0) || somaVenda;
-  const lucroPct = valorTotal > 0 ? (somaLucroReais / valorTotal) : 0;
-  return { lucroReais: somaLucroReais, lucroPct, incompleto, itens: itensCalc };
 }
 
 function clienteNome(id) {
@@ -286,36 +257,11 @@ function render() {
       } else if (!cached.length) {
         expHtml = `<div class="expand-section visible"><div class="empty-state" style="padding:16px">Nenhum produto neste pedido.</div></div>`;
       } else {
-        const L = calcularLucroPedido(o, cached);
-        const avisoIncompleto = L.incompleto
-          ? `<div style="margin-top:10px;padding:8px 12px;background:#fff8e1;border:1px solid #f0d878;border-radius:8px;font-size:.78rem;color:#856404;display:flex;align-items:center;gap:8px">
-               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="flex-shrink:0"><path d="M8 1L15 14H1L8 1Z" stroke="#856404" stroke-width="1.6" stroke-linejoin="round" fill="#fff3cd"/><path d="M8 6v3.5M8 11.5v.5" stroke="#856404" stroke-width="1.6" stroke-linecap="round"/></svg>
-               <span>Lucro parcial: ${!o.data_recebimento ? 'pedido sem data de recebimento' : 'parâmetros financeiros do mês não configurados'}. Componentes ausentes contam como 0%.</span>
-             </div>`
-          : '';
-        const lucroCor = L.lucroReais >= 0 ? '#2e7d32' : '#b71c1c';
         expHtml = `<div class="expand-section visible">
           <div class="expand-block" style="grid-column:1/-1">
             <h4>Produtos do Pedido</h4>
-            <div class="mini-row mini-header" style="grid-template-columns:70px 1fr 60px 110px 110px 90px 110px;"><span>ID</span><span>Nome</span><span style="text-align:center">Qtd</span><span style="text-align:center">Preço Unit.</span><span style="text-align:center">Cobrado</span><span style="text-align:center">Lucro %</span><span style="text-align:center">Lucro R$</span></div>
-            ${cached.map((p, i) => {
-              const li = L.itens[i] || { lucroPctItem: 0, lucroReaisItem: 0 };
-              const corItem = li.lucroReaisItem >= 0 ? '#2e7d32' : '#b71c1c';
-              return `<div class="mini-row" style="grid-template-columns:70px 1fr 60px 110px 110px 90px 110px;">
-                <span style="color:var(--text-mid)">#${p.id_produto}</span>
-                <span>${p.produtos?.nome || '—'}</span>
-                <span style="text-align:center">${p.quantidade}</span>
-                <span style="text-align:center">R$ ${fmtMoney(p.preco_unitario)}</span>
-                <span style="text-align:center">R$ ${fmtMoney(p.preco_total)}</span>
-                <span style="text-align:center;color:${corItem};font-weight:600">${(li.lucroPctItem*100).toFixed(1).replace('.', ',')}%</span>
-                <span style="text-align:center;color:${corItem};font-weight:700">R$ ${fmtMoney(li.lucroReaisItem)}</span>
-              </div>`;
-            }).join('')}
-            <div class="lucro-total" style="margin-top:12px;padding:12px 16px;background:var(--inner-bg);border-radius:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-              <span style="font-family:var(--font-display);font-size:1rem;color:var(--text-dark)">Lucro desta venda</span>
-              <span style="font-family:var(--font-display);font-size:1.3rem;color:${lucroCor}">R$ ${fmtMoney(L.lucroReais)} <span style="font-size:.95rem;opacity:.85">(${(L.lucroPct*100).toFixed(1).replace('.', ',')}%)</span></span>
-            </div>
-            ${avisoIncompleto}
+            <div class="mini-row mini-header" style="grid-template-columns:80px 1fr 100px 130px 130px;"><span>ID</span><span>Nome</span><span style="text-align:center">Qtd</span><span style="text-align:center">Preço Unit.</span><span style="text-align:center">Preço Total</span></div>
+            ${cached.map(p => `<div class="mini-row" style="grid-template-columns:80px 1fr 100px 130px 130px;"><span style="color:var(--text-mid)">#${p.id_produto}</span><span>${p.produtos?.nome || '—'}</span><span style="text-align:center">${p.quantidade}</span><span style="text-align:center">R$ ${fmtMoney(p.preco_unitario)}</span><span style="text-align:center">R$ ${fmtMoney(p.preco_total)}</span></div>`).join('')}
           </div>
         </div>`;
       }
@@ -323,18 +269,18 @@ function render() {
 
     return `<div class="order-block">
       <div class="data-row tbl-pedidos">
-        <span class="left">
+        <span class="left toggle-span" data-label="Detalhes">
           <button class="toggle-btn ${isExp ? 'open' : ''}" onclick="toggleExp(${o.id_pedido})">
             <svg width="12" height="8" viewBox="0 0 12 8"><path d="M1 1l5 5 5-5" stroke="#5C2E28" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
           </button>
         </span>
-        <span class="id-cell">#${o.id_pedido}</span>
-        <span>R$ ${fmtMoney(o.valor)}</span>
-        <span>${o.forma_pagamento || '—'}</span>
-        <span>${clienteNome(o.id_cliente)}</span>
-        <span>${fmtDate(o.data_pedido)}</span>
-        <span>${fmtDate(o.data_recebimento)}</span>
-        <span class="status-wrap">
+        <span class="id-cell" data-label="Nº Pedido">#${o.id_pedido}</span>
+        <span data-label="Valor">R$ ${fmtMoney(o.valor)}</span>
+        <span data-label="Pagamento">${o.forma_pagamento || '—'}</span>
+        <span data-label="Cliente">${clienteNome(o.id_cliente)}</span>
+        <span data-label="Data Pedido">${fmtDate(o.data_pedido)}</span>
+        <span data-label="Data Receb.">${fmtDate(o.data_recebimento)}</span>
+        <span class="status-wrap" data-label="Status">
           <select class="status-select ${sk}" onchange="changeStatus(event,${o.id_pedido})">
             <option value="Pendente"   ${o.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
             <option value="Finalizado" ${o.status === 'Finalizado' ? 'selected' : ''}>Finalizado</option>
