@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clientes – Casa Personalizada</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div class="loading-bar" id="loadingBar"></div>
+<aside class="sidebar">
+  <div class="logo-svg-wrap"><img src="img/logo.png" alt="Logo" style="width:150px;height:80px;object-fit:contain;"/></div>
+  <nav>
+    <a href="relatorio.html">Relatórios</a>
+    <a href="pedidos.html">Pedidos</a>
+    <a href="insumos.html">Insumos</a>
+    <a href="compras.html">Compras</a>
+    <a href="produtos.html">Produtos</a>
+    <a href="clientes.html" class="active">Clientes</a>
+    <a href="fornecedores.html">Fornecedores</a>
+    <a href="balanco.html">Balanço</a>
+    <a href="financeiro.html">Financeiro</a>
+  </nav>
+</aside>
+<main class="main">
+  <h1 class="page-title">Clientes</h1>
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#7A4A40" stroke-width="1.8"/><path d="M10.5 10.5L14 14" stroke="#7A4A40" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" id="searchInput" placeholder="Buscar por nome, e-mail ou telefone…" oninput="filterData()"/>
+    </div>
+    <button class="btn" onclick="openNewModal()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
+      Novo Cliente
+    </button>
+  </div>
+  <div class="sort-bar">
+    <label>Ordenar:</label>
+    <select id="sortSelect" onchange="setSortFromBar()">
+      <option value="nome">Nome</option>
+      <option value="email">E-mail</option>
+      <option value="telefone">Telefone</option>
+      <option value="id_cliente">ID</option>
+    </select>
+    <button onclick="toggleSortDir()" id="sortDirBtn" title="Inverter ordem">↑</button>
+  </div>
+  <div class="table-container">
+    <div class="tbl-header tbl-clientes">
+      <span class="left sortable" onclick="setSort('id_cliente')" data-col="id_cliente">ID <span class="sort-arrow"></span></span>
+      <span class="left sortable" onclick="setSort('nome')" data-col="nome">Nome <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('email')" data-col="email">E-mail <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('telefone')" data-col="telefone">Telefone <span class="sort-arrow"></span></span>
+      <span>Observação</span>
+      <span>Ações</span>
+    </div>
+    <div id="data-list"><div class="empty-state">Carregando clientes…</div></div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="mainModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('mainModal')">✕</button>
+    <h2 id="modalTitle">Novo Cliente</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>Nome *</label><input type="text" id="f-nome" placeholder="Nome"/></div>
+      <div class="form-group"><label>Sobrenome</label><input type="text" id="f-sobrenome" placeholder="Sobrenome"/></div>
+      <div class="form-group"><label>Telefone</label><input type="text" id="f-telefone" placeholder="(00) 00000-0000"/></div>
+      <div class="form-group"><label>E-mail</label><input type="email" id="f-email" placeholder="email@exemplo.com"/></div>
+      <div class="form-group full"><label>Observação</label><textarea id="f-observacao" rows="3" placeholder="Observações sobre o cliente…"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('mainModal')">Cancelar</button>
+      <button class="btn" id="btnSalvar" onclick="saveItem()">Salvar Cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-modal">
+    <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+    <p>Excluir o cliente</p>
+    <span class="highlight" id="confirmNome"></span>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancelar</button>
+      <button class="btn btn-danger" id="btnDel" onclick="deleteItem()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script>
+if (!requireAuth()) throw new Error("redirect");
+
+let allData=[], filtered=[], editingId=null, deletingId=null, currentPage=1;
+let sortCol='nome', sortDir='asc';
+const PAGE=15;
+
+async function loadAll() {
+  loadStart();
+  try {
+    const data = await supa('clientes?select=*&order=nome.asc');
+    allData = data || []; filtered = [...allData]; applySort(); render();
+  } catch(e) { toast('Erro: ' + e.message, true); document.getElementById('data-list').innerHTML = `<div class="empty-state">Erro: ${e.message}</div>`; }
+  loadDone();
+}
+
+function nomeCompleto(c){ return `${c.nome}${c.sobrenome ? ' ' + c.sobrenome : ''}`; }
+
+function setSort(col) {
+  if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortCol = col; sortDir = 'asc'; }
+  syncSortBar();
+  applySort(); render();
+}
+function setSortFromBar() { sortCol = document.getElementById('sortSelect').value; applySort(); render(); }
+function toggleSortDir() { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; document.getElementById('sortDirBtn').textContent = sortDir === 'asc' ? '↑' : '↓'; applySort(); render(); }
+function syncSortBar() {
+  const sel = document.getElementById('sortSelect'); if (sel) sel.value = sortCol;
+  const b = document.getElementById('sortDirBtn'); if (b) b.textContent = sortDir === 'asc' ? '↑' : '↓';
+}
+
+function applySort() {
+  const dir = sortDir === 'asc' ? 1 : -1;
+  filtered.sort((a, b) => {
+    let va, vb;
+    if (sortCol === 'nome') { va = nomeCompleto(a).toLowerCase(); vb = nomeCompleto(b).toLowerCase(); }
+    else { va = a[sortCol]; vb = b[sortCol]; }
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+    if (va < vb) return -1 * dir;
+    if (va > vb) return  1 * dir;
+    return 0;
+  });
+  document.querySelectorAll('.tbl-header .sortable').forEach(el => {
+    const active = el.dataset.col === sortCol;
+    el.classList.toggle('active', active);
+    el.classList.toggle('asc', active && sortDir === 'asc');
+  });
+}
+
+function filterData() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  filtered = q ? allData.filter(c =>
+    `${c.nome} ${c.sobrenome || ''}`.toLowerCase().includes(q) ||
+    (c.email || '').toLowerCase().includes(q) ||
+    (c.telefone || '').includes(q)
+  ) : [...allData];
+  applySort();
+  currentPage = 1;
+  render();
+}
+
+function render() {
+  const el = document.getElementById('data-list');
+  if (!filtered.length) { el.innerHTML = '<div class="empty-state">Nenhum cliente encontrado.</div>'; document.getElementById('pagination').innerHTML = ''; return; }
+  const start = (currentPage - 1) * PAGE;
+  const page = filtered.slice(start, start + PAGE);
+  el.innerHTML = page.map(c => `
+    <div class="data-row tbl-clientes">
+      <span class="id-cell" data-label="ID">#${c.id_cliente}</span>
+      <span class="left" data-label="Nome">${c.nome}${c.sobrenome ? ' ' + c.sobrenome : ''}</span>
+      <span data-label="E-mail" title="${c.email || ''}">${c.email || '—'}</span>
+      <span data-label="Telefone">${c.telefone || '—'}</span>
+      <span data-label="Observação" title="${c.observacao || ''}">${c.observacao ? c.observacao.substring(0,40) + (c.observacao.length > 40 ? '…' : '') : '—'}</span>
+      <span class="row-actions">
+        <button class="btn-icon btn-edit-icon" onclick="openEdit(${c.id_cliente})" title="Editar"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5L11.5 4.5L5 11H3v-2L9.5 2.5Z" stroke="#856404" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+        <button class="btn-icon btn-del-icon" onclick="openDel(${c.id_cliente})" title="Excluir"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </span>
+    </div>`).join('');
+  buildPagination('pagination', currentPage, filtered.length, PAGE, 'goPage');
+}
+
+function goPage(p) { const t = Math.ceil(filtered.length / PAGE); if (p < 1 || p > t) return; currentPage = p; render(); }
+
+function openModal(id) { document.getElementById(id).classList.add('visible'); }
+function closeModal(id) { document.getElementById(id).classList.remove('visible'); if (id === 'mainModal') editingId = null; }
+
+function openNewModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Novo Cliente';
+  ['f-nome','f-sobrenome','f-telefone','f-email','f-observacao'].forEach(i => document.getElementById(i).value = '');
+  openModal('mainModal');
+}
+
+function openEdit(id) {
+  const c = allData.find(x => x.id_cliente === id); if (!c) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Editar Cliente';
+  document.getElementById('f-nome').value = c.nome || '';
+  document.getElementById('f-sobrenome').value = c.sobrenome || '';
+  document.getElementById('f-telefone').value = c.telefone || '';
+  document.getElementById('f-email').value = c.email || '';
+  document.getElementById('f-observacao').value = c.observacao || '';
+  openModal('mainModal');
+}
+
+function openDel(id) {
+  const c = allData.find(x => x.id_cliente === id); if (!c) return;
+  deletingId = id;
+  document.getElementById('confirmNome').textContent = `${c.nome}${c.sobrenome ? ' ' + c.sobrenome : ''}`;
+  openModal('confirmModal');
+}
+
+async function saveItem() {
+  const nome = document.getElementById('f-nome').value.trim();
+  if (!nome) { toast('Nome obrigatório.', true); return; }
+  const payload = {
+    nome,
+    sobrenome: document.getElementById('f-sobrenome').value.trim() || null,
+    telefone: document.getElementById('f-telefone').value.trim() || null,
+    email: document.getElementById('f-email').value.trim() || null,
+    observacao: document.getElementById('f-observacao').value.trim() || null,
+  };
+  const btn = document.getElementById('btnSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  loadStart();
+  try {
+    if (editingId) { await supa(`clientes?id_cliente=eq.${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) }); toast('Cliente atualizado!'); }
+    else { await supa('clientes', { method: 'POST', body: JSON.stringify(payload) }); toast('Cliente criado!'); }
+    closeModal('mainModal'); await loadAll();
+  } catch(e) { toast('Erro: ' + e.message, true); }
+  btn.disabled = false; btn.textContent = 'Salvar Cliente';
+  loadDone();
+}
+
+async function deleteItem() {
+  const btn = document.getElementById('btnDel'); btn.disabled = true; btn.textContent = 'Excluindo…';
+  loadStart();
+  try {
+    await supa(`clientes?id_cliente=eq.${deletingId}`, { method: 'DELETE' });
+    toast('Cliente excluído.'); closeModal('confirmModal'); await loadAll();
+  } catch(e) { toast('Erro: ' + e.message, true); }
+  btn.disabled = false; btn.textContent = 'Excluir';
+  loadDone();
+}
+
+loadAll();
+</script>
+</body>
+</html>

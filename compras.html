@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Compras – Casa Personalizada</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div class="loading-bar" id="loadingBar"></div>
+<aside class="sidebar">
+  <div class="logo-svg-wrap"><img src="img/logo.png" alt="Logo" style="width:150px;height:80px;object-fit:contain;"/></div>
+  <nav>
+    <a href="relatorio.html">Relatórios</a>
+    <a href="pedidos.html">Pedidos</a>
+    <a href="insumos.html">Insumos</a>
+    <a href="compras.html" class="active">Compras</a>
+    <a href="produtos.html">Produtos</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="fornecedores.html">Fornecedores</a>
+    <a href="balanco.html">Balanço</a>
+    <a href="financeiro.html">Financeiro</a>
+  </nav>
+</aside>
+<main class="main">
+  <h1 class="page-title">Compras</h1>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#7A4A40" stroke-width="1.8"/><path d="M10.5 10.5L14 14" stroke="#7A4A40" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" id="searchInput" placeholder="Buscar por fornecedor ou observação…" oninput="filterData()"/>
+    </div>
+    <button class="btn" onclick="openNewModal()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
+      Nova Compra
+    </button>
+  </div>
+
+  <div class="sort-bar">
+    <label>Ordenar:</label>
+    <select id="sortSelect" onchange="setSortFromBar()">
+      <option value="data_compra">Data</option>
+      <option value="fornecedor">Fornecedor</option>
+      <option value="valor_transporte">Transporte</option>
+      <option value="id_compra">ID</option>
+    </select>
+    <button onclick="toggleSortDir()" id="sortDirBtn" title="Inverter ordem">↑</button>
+  </div>
+
+  <div class="table-container">
+    <div class="tbl-header tbl-compras">
+      <span class="left"></span>
+      <span class="left sortable" onclick="setSort('id_compra')" data-col="id_compra">ID <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('data_compra')" data-col="data_compra">Data <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('fornecedor')" data-col="fornecedor">Fornecedor <span class="sort-arrow"></span></span>
+      <span>Itens (R$)</span>
+      <span class="sortable" onclick="setSort('valor_transporte')" data-col="valor_transporte">Transporte <span class="sort-arrow"></span></span>
+      <span>Total</span>
+      <span>Ações</span>
+    </div>
+    <div id="data-list"><div class="empty-state">Carregando compras…</div></div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</main>
+
+<!-- MODAL NOVA/EDITAR -->
+<div class="modal-overlay" id="mainModal">
+  <div class="modal wide">
+    <button class="modal-close" onclick="closeModal('mainModal')">✕</button>
+    <h2 id="modalTitle">Nova Compra</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Data da Compra *</label>
+        <input type="date" id="f-data"/>
+      </div>
+      <div class="form-group">
+        <label>Fornecedor *</label>
+        <select id="f-fornec"><option value="">Carregando…</option></select>
+      </div>
+      <div class="form-group">
+        <label>Valor do Transporte (R$)</label>
+        <input type="number" id="f-transporte" step="0.01" min="0" placeholder="0,00" oninput="updateSummary()"/>
+        <span style="font-size:.75rem;color:var(--text-mid);margin-top:4px">Frete ou custo de ir ao fornecedor — diluído entre os itens.</span>
+      </div>
+      <div class="form-group">
+        <label>Observação</label>
+        <input type="text" id="f-obs" placeholder="Opcional"/>
+      </div>
+    </div>
+
+    <div class="sub-section">
+      <h3>Insumos Comprados</h3>
+      <div class="sub-col-header" style="grid-template-columns:1fr 90px 130px 130px 40px;">
+        <span>Insumo</span><span>Qtd</span><span>Preço Unit.</span><span>Subtotal</span><span></span>
+      </div>
+      <div id="modal-itens"></div>
+      <button class="btn-add-row" onclick="addItemRow()">+ Adicionar insumo</button>
+
+      <div id="compra-summary" style="margin-top:18px;padding:14px 18px;background:var(--inner-bg);border-radius:12px;border:1.5px dashed var(--card-border);font-family:var(--font-body);font-size:.9rem;color:var(--text-dark);display:none">
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span>Subtotal dos itens:</span><b id="sum-itens">R$ 0,00</b></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span>Transporte:</span><b id="sum-frete">R$ 0,00</b></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;margin-top:4px;border-top:1px solid var(--card-border);color:var(--accent);font-size:1rem"><span><b>Total da compra:</b></span><b id="sum-total">R$ 0,00</b></div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('mainModal')">Cancelar</button>
+      <button class="btn" id="btnSalvar" onclick="saveItem()">Salvar Compra</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-modal">
+    <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+    <p>Excluir a compra</p>
+    <span class="highlight" id="confirmNome"></span>
+    <p style="font-size:.85rem;color:var(--text-mid);margin-bottom:24px;">Os itens vinculados também serão removidos.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancelar</button>
+      <button class="btn btn-danger" id="btnDel" onclick="deleteItem()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script>
+if (!requireAuth()) throw new Error("redirect");
+
+let allData=[], filtered=[], fornecedores=[], insumos=[], expandCache={}, expandedIds=new Set();
+let editingId=null, deletingId=null, currentPage=1;
+let sortCol='data_compra', sortDir='desc';
+const PAGE=15;
+
+async function loadAll() {
+  loadStart();
+  try {
+    const [comp, forn, ins] = await Promise.all([
+      supa('compras?select=*&order=data_compra.desc,id_compra.desc'),
+      supa('fornecedores?select=id_fornecedor,nome&order=nome.asc'),
+      supa('insumos?select=id_insumo,nome&order=nome.asc'),
+    ]);
+    allData = comp || []; fornecedores = forn || []; insumos = ins || [];
+    filtered = [...allData];
+    applySort();
+    render();
+  } catch(e) { toast('Erro: ' + e.message, true); document.getElementById('data-list').innerHTML = `<div class="empty-state">Erro: ${e.message}</div>`; }
+  loadDone();
+}
+
+function fornecedorNome(id) {
+  const f = fornecedores.find(x => x.id_fornecedor === id);
+  return f ? f.nome : '—';
+}
+function insumoNome(id) {
+  const i = insumos.find(x => x.id_insumo === id);
+  return i ? i.nome : '—';
+}
+
+function setSort(col) {
+  if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortCol = col; sortDir = 'asc'; }
+  syncSortBar(); applySort(); render();
+}
+function setSortFromBar() { sortCol = document.getElementById('sortSelect').value; applySort(); render(); }
+function toggleSortDir() { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; document.getElementById('sortDirBtn').textContent = sortDir === 'asc' ? '↑' : '↓'; applySort(); render(); }
+function syncSortBar() {
+  const sel = document.getElementById('sortSelect'); if (sel) sel.value = sortCol;
+  const b = document.getElementById('sortDirBtn'); if (b) b.textContent = sortDir === 'asc' ? '↑' : '↓';
+}
+function applySort() {
+  const dir = sortDir === 'asc' ? 1 : -1;
+  filtered.sort((a, b) => {
+    let va, vb;
+    if (sortCol === 'fornecedor') { va = fornecedorNome(a.id_fornecedor).toLowerCase(); vb = fornecedorNome(b.id_fornecedor).toLowerCase(); }
+    else { va = a[sortCol]; vb = b[sortCol]; }
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+    if (va < vb) return -1 * dir;
+    if (va > vb) return  1 * dir;
+    return 0;
+  });
+  document.querySelectorAll('.tbl-header .sortable').forEach(el => {
+    const active = el.dataset.col === sortCol;
+    el.classList.toggle('active', active);
+    el.classList.toggle('asc', active && sortDir === 'asc');
+  });
+}
+
+function filterData() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  filtered = q ? allData.filter(c =>
+    fornecedorNome(c.id_fornecedor).toLowerCase().includes(q) ||
+    (c.observacao || '').toLowerCase().includes(q)
+  ) : [...allData];
+  applySort();
+  currentPage = 1;
+  render();
+}
+
+function render() {
+  const el = document.getElementById('data-list');
+  if (!filtered.length) { el.innerHTML = '<div class="empty-state">Nenhuma compra registrada.</div>'; document.getElementById('pagination').innerHTML = ''; return; }
+  const start = (currentPage - 1) * PAGE;
+  const page = filtered.slice(start, start + PAGE);
+
+  el.innerHTML = page.map(c => {
+    const isExp = expandedIds.has(c.id_compra);
+    const cached = expandCache[c.id_compra];
+    let subtotal = 0;
+    if (cached) subtotal = cached.reduce((s,i) => s + (i.preco_total || 0), 0);
+    const transporte = c.valor_transporte || 0;
+    const total = subtotal + transporte;
+
+    let expHtml = '';
+    if (isExp) {
+      if (cached === undefined) {
+        expHtml = `<div class="expand-section visible"><div class="empty-state" style="padding:14px">Carregando itens…</div></div>`;
+        loadExpand(c.id_compra);
+      } else if (!cached.length) {
+        expHtml = `<div class="expand-section visible"><div class="empty-state" style="padding:14px">Nenhum item nesta compra.</div></div>`;
+      } else {
+        expHtml = `<div class="expand-section visible">
+          <div class="expand-block" style="grid-column:1/-1">
+            <h4>Itens Comprados</h4>
+            <div class="mini-row mini-header" style="grid-template-columns:1fr 80px 110px 110px 130px;"><span>Insumo</span><span style="text-align:center">Qtd</span><span style="text-align:center">Preço Unit.</span><span style="text-align:center">Subtotal</span><span style="text-align:center">Custo c/ Frete</span></div>
+            ${cached.map(i => {
+              const fretePart = subtotal > 0 ? (transporte * (i.preco_total || 0) / subtotal) : 0;
+              const custoReal = (i.preco_total || 0) + fretePart;
+              return `<div class="mini-row" style="grid-template-columns:1fr 80px 110px 110px 130px;">
+                <span>${insumoNome(i.id_insumo)}</span>
+                <span style="text-align:center">${i.quantidade}</span>
+                <span style="text-align:center">R$ ${fmtMoney(i.preco_unitario)}</span>
+                <span style="text-align:center">R$ ${fmtMoney(i.preco_total)}</span>
+                <span style="text-align:center;color:var(--accent);font-weight:700">R$ ${fmtMoney(custoReal)}</span>
+              </div>`;
+            }).join('')}
+            ${c.observacao ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--card-border);font-size:.85rem;color:var(--text-mid)"><b>Obs:</b> ${c.observacao}</div>` : ''}
+          </div>
+        </div>`;
+      }
+    }
+
+    return `<div class="order-block">
+      <div class="data-row tbl-compras">
+        <span class="left toggle-span" data-label="Detalhes">
+          <button class="toggle-btn ${isExp ? 'open' : ''}" onclick="toggleExp(${c.id_compra})">
+            <svg width="12" height="8" viewBox="0 0 12 8"><path d="M1 1l5 5 5-5" stroke="#5C2E28" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          </button>
+        </span>
+        <span class="id-cell" data-label="ID">#${c.id_compra}</span>
+        <span data-label="Data">${fmtDate(c.data_compra)}</span>
+        <span data-label="Fornecedor">${fornecedorNome(c.id_fornecedor)}</span>
+        <span data-label="Itens (R$)">${cached ? 'R$ ' + fmtMoney(subtotal) : '…'}</span>
+        <span data-label="Transporte">R$ ${fmtMoney(transporte)}</span>
+        <span data-label="Total" style="color:var(--accent);font-weight:700">${cached ? 'R$ ' + fmtMoney(total) : '…'}</span>
+        <span class="row-actions">
+          <button class="btn-icon btn-edit-icon" onclick="openEdit(${c.id_compra})" title="Editar"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5L11.5 4.5L5 11H3v-2L9.5 2.5Z" stroke="#856404" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+          <button class="btn-icon btn-del-icon" onclick="openDel(${c.id_compra})" title="Excluir"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </span>
+      </div>
+      ${expHtml}
+    </div>`;
+  }).join('');
+
+  // Pre-load all subtotals for display
+  page.forEach(c => { if (expandCache[c.id_compra] === undefined) preloadSubtotal(c.id_compra); });
+
+  buildPagination('pagination', currentPage, filtered.length, PAGE, 'goPage');
+}
+
+async function preloadSubtotal(id) {
+  try {
+    const data = await supa(`compra_insumo?select=*&id_compra=eq.${id}`);
+    expandCache[id] = data || [];
+    render();
+  } catch(e) { expandCache[id] = []; render(); }
+}
+
+async function loadExpand(id) {
+  if (expandCache[id] !== undefined) { render(); return; }
+  await preloadSubtotal(id);
+}
+
+function toggleExp(id) {
+  if (expandedIds.has(id)) expandedIds.delete(id);
+  else expandedIds.add(id);
+  render();
+}
+
+function goPage(p) { const t = Math.ceil(filtered.length / PAGE); if (p < 1 || p > t) return; currentPage = p; render(); }
+function openModal(id) { document.getElementById(id).classList.add('visible'); }
+function closeModal(id) { document.getElementById(id).classList.remove('visible'); if (id === 'mainModal') editingId = null; }
+
+function populateFornecSelect(selId = '') {
+  const sel = document.getElementById('f-fornec');
+  if (!fornecedores.length) { sel.innerHTML = '<option value="">Nenhum fornecedor cadastrado</option>'; return; }
+  sel.innerHTML = '<option value="">Selecione um fornecedor…</option>' + fornecedores.map(f => `<option value="${f.id_fornecedor}" ${f.id_fornecedor == selId ? 'selected' : ''}>${f.nome}</option>`).join('');
+}
+
+function addItemRow(i = {}) {
+  const div = document.createElement('div');
+  div.className = 'sub-row';
+  div.style.gridTemplateColumns = '1fr 90px 130px 130px 40px';
+  const opts = insumos.map(ins => `<option value="${ins.id_insumo}" ${i.id_insumo == ins.id_insumo ? 'selected' : ''}>${ins.nome}</option>`).join('');
+  div.innerHTML = `
+    <select class="i-insumo" onchange="updateSummary()"><option value="">Selecione…</option>${opts}</select>
+    <input type="number" class="i-qtd" placeholder="Qtd" value="${i.quantidade || ''}" min="1" oninput="recalcLine(this);updateSummary()"/>
+    <input type="number" class="i-preco" placeholder="R$ 0,00" value="${i.preco_unitario || ''}" step="0.01" min="0" oninput="recalcLine(this);updateSummary()"/>
+    <input type="text" class="i-sub" placeholder="R$ 0,00" value="${i.preco_total ? 'R$ ' + fmtMoney(i.preco_total) : ''}" readonly style="background:var(--inner-bg);color:var(--text-mid);text-align:right"/>
+    <button class="btn-remove" onclick="this.parentElement.remove();updateSummary()" title="Remover">✕</button>
+  `;
+  document.getElementById('modal-itens').appendChild(div);
+}
+
+function recalcLine(input) {
+  const row = input.closest('.sub-row');
+  const qtd = parseInt(row.querySelector('.i-qtd').value) || 0;
+  const pu = parseFloat(row.querySelector('.i-preco').value) || 0;
+  const sub = qtd * pu;
+  row.querySelector('.i-sub').value = sub > 0 ? 'R$ ' + fmtMoney(sub) : '';
+}
+
+function updateSummary() {
+  const rows = [...document.querySelectorAll('#modal-itens .sub-row')];
+  const subtotal = rows.reduce((s, r) => {
+    const q = parseInt(r.querySelector('.i-qtd').value) || 0;
+    const p = parseFloat(r.querySelector('.i-preco').value) || 0;
+    return s + (q * p);
+  }, 0);
+  const transporte = parseFloat(document.getElementById('f-transporte').value) || 0;
+  const total = subtotal + transporte;
+  const box = document.getElementById('compra-summary');
+  if (rows.length === 0 && transporte === 0) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  document.getElementById('sum-itens').textContent = 'R$ ' + fmtMoney(subtotal);
+  document.getElementById('sum-frete').textContent = 'R$ ' + fmtMoney(transporte);
+  document.getElementById('sum-total').textContent = 'R$ ' + fmtMoney(total);
+}
+
+function openNewModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Nova Compra';
+  document.getElementById('f-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('f-transporte').value = '';
+  document.getElementById('f-obs').value = '';
+  populateFornecSelect();
+  document.getElementById('modal-itens').innerHTML = '';
+  addItemRow();
+  updateSummary();
+  openModal('mainModal');
+}
+
+async function openEdit(id) {
+  const c = allData.find(x => x.id_compra === id); if (!c) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Editar Compra #' + id;
+  populateFornecSelect(c.id_fornecedor);
+  document.getElementById('f-data').value = toInputDate(c.data_compra);
+  document.getElementById('f-transporte').value = c.valor_transporte || '';
+  document.getElementById('f-obs').value = c.observacao || '';
+  document.getElementById('modal-itens').innerHTML = '';
+  const cached = expandCache[id];
+  if (cached && cached.length) { cached.forEach(i => addItemRow(i)); }
+  else {
+    try {
+      const data = await supa(`compra_insumo?select=*&id_compra=eq.${id}`);
+      (data || []).forEach(i => addItemRow(i));
+      if (!data || !data.length) addItemRow();
+    } catch(e) { addItemRow(); }
+  }
+  updateSummary();
+  openModal('mainModal');
+}
+
+function openDel(id) {
+  deletingId = id;
+  const c = allData.find(x => x.id_compra === id);
+  document.getElementById('confirmNome').textContent = `#${id} — ${fornecedorNome(c.id_fornecedor)} (${fmtDate(c.data_compra)})`;
+  openModal('confirmModal');
+}
+
+async function saveItem() {
+  const id_fornecedor = parseInt(document.getElementById('f-fornec').value);
+  const data_compra   = document.getElementById('f-data').value;
+  const valor_transporte = parseFloat(document.getElementById('f-transporte').value) || 0;
+  const observacao    = document.getElementById('f-obs').value.trim() || null;
+
+  if (!id_fornecedor) { toast('Selecione um fornecedor.', true); return; }
+  if (!data_compra)   { toast('Informe a data da compra.', true); return; }
+
+  const itens = [...document.querySelectorAll('#modal-itens .sub-row')].map(r => {
+    const id_insumo = parseInt(r.querySelector('.i-insumo').value);
+    const quantidade = parseInt(r.querySelector('.i-qtd').value) || 0;
+    const preco_unitario = parseFloat(r.querySelector('.i-preco').value) || 0;
+    return { id_insumo, quantidade, preco_unitario, preco_total: quantidade * preco_unitario };
+  }).filter(x => x.id_insumo && x.quantidade > 0);
+
+  if (!itens.length) { toast('Adicione pelo menos um insumo.', true); return; }
+
+  const payload = { id_fornecedor, data_compra, valor_transporte, observacao };
+  const btn = document.getElementById('btnSalvar');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  loadStart();
+  try {
+    let compraId = editingId;
+    if (editingId) {
+      await supa(`compras?id_compra=eq.${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      await supa(`compra_insumo?id_compra=eq.${editingId}`, { method: 'DELETE' });
+    } else {
+      const [r] = await supa('compras', { method: 'POST', body: JSON.stringify(payload) });
+      compraId = r.id_compra;
+    }
+    await supa('compra_insumo', { method: 'POST', body: JSON.stringify(itens.map(i => ({ ...i, id_compra: compraId }))) });
+    delete expandCache[compraId];
+    toast(editingId ? 'Compra atualizada!' : 'Compra registrada!');
+    closeModal('mainModal');
+    await loadAll();
+  } catch(e) { toast('Erro: ' + e.message, true); }
+  btn.disabled = false; btn.textContent = 'Salvar Compra';
+  loadDone();
+}
+
+async function deleteItem() {
+  const btn = document.getElementById('btnDel'); btn.disabled = true; btn.textContent = 'Excluindo…';
+  loadStart();
+  try {
+    await supa(`compra_insumo?id_compra=eq.${deletingId}`, { method: 'DELETE' });
+    await supa(`compras?id_compra=eq.${deletingId}`, { method: 'DELETE' });
+    delete expandCache[deletingId];
+    expandedIds.delete(deletingId);
+    toast('Compra excluída.');
+    closeModal('confirmModal');
+    await loadAll();
+  } catch(e) { toast('Erro: ' + e.message, true); }
+  btn.disabled = false; btn.textContent = 'Excluir';
+  loadDone();
+}
+
+loadAll();
+</script>
+</body>
+</html>

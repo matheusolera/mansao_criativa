@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Insumos – Casa Personalizada</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div class="loading-bar" id="loadingBar"></div>
+<aside class="sidebar">
+  <div class="logo-svg-wrap"><img src="img/logo.png" alt="Logo" style="width:150px;height:80px;object-fit:contain;"/></div>
+  <nav>
+    <a href="relatorio.html">Relatórios</a>
+    <a href="pedidos.html">Pedidos</a>
+    <a href="insumos.html" class="active">Insumos</a>
+    <a href="compras.html">Compras</a>
+    <a href="produtos.html">Produtos</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="fornecedores.html">Fornecedores</a>
+    <a href="balanco.html">Balanço</a>
+    <a href="financeiro.html">Financeiro</a>
+  </nav>
+</aside>
+<main class="main">
+  <h1 class="page-title">Insumos</h1>
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#7A4A40" stroke-width="1.8"/><path d="M10.5 10.5L14 14" stroke="#7A4A40" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" id="searchInput" placeholder="Buscar insumo…" oninput="filterData()"/>
+    </div>
+    <button class="btn" onclick="openNewModal()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
+      Novo Insumo
+    </button>
+  </div>
+  <div class="sort-bar">
+    <label>Ordenar:</label>
+    <select id="sortSelect" onchange="setSortFromBar()">
+      <option value="nome">Nome</option>
+      <option value="quantidade">Quantidade</option>
+      <option value="id_insumo">ID</option>
+    </select>
+    <button onclick="toggleSortDir()" id="sortDirBtn" title="Inverter ordem">↑</button>
+  </div>
+  <div class="table-container">
+    <div class="tbl-header tbl-insumos">
+      <span class="left sortable" onclick="setSort('id_insumo')" data-col="id_insumo">ID <span class="sort-arrow"></span></span>
+      <span class="left sortable" onclick="setSort('nome')" data-col="nome">Nome <span class="sort-arrow"></span></span>
+      <span class="sortable" onclick="setSort('quantidade')" data-col="quantidade">Quantidade <span class="sort-arrow"></span></span>
+      <span>Produtos</span>
+      <span>Ações</span>
+    </div>
+    <div id="data-list"><div class="empty-state">Carregando insumos…</div></div>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="mainModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('mainModal')">✕</button>
+    <h2 id="modalTitle">Novo Insumo</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>Nome *</label><input type="text" id="f-nome" placeholder="Nome do insumo"/></div>
+      <div class="form-group"><label>Quantidade em estoque</label><input type="number" id="f-qtd" placeholder="0" min="0"/></div>
+    </div>
+    <div class="sub-section">
+      <h3>Fornecedores deste Insumo</h3>
+      <div class="sub-col-header" style="grid-template-columns:1fr 130px 110px 80px 40px;">
+        <span>Fornecedor</span><span>ID no Fornecedor</span><span>Preço</span><span>Qtd</span><span></span>
+      </div>
+      <div id="modal-fornec"></div>
+      <button class="btn-add-row" onclick="addFornecRow()">+ Adicionar fornecedor</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('mainModal')">Cancelar</button>
+      <button class="btn" id="btnSalvar" onclick="saveItem()">Salvar Insumo</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-modal">
+    <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+    <p>Excluir o insumo</p>
+    <span class="highlight" id="confirmNome"></span>
+    <p style="font-size:.85rem;color:var(--text-mid);margin-bottom:24px;">Isso removerá também os vínculos com fornecedores.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancelar</button>
+      <button class="btn btn-danger" id="btnDel" onclick="deleteItem()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script>
+if (!requireAuth()) throw new Error("redirect");
+
+let allData=[], filtered=[], fornecedores=[], produtos=[], expandedIds=new Set(), expandCache={};
+let editingId=null, deletingId=null, currentPage=1;
+let sortCol='nome', sortDir='asc';
+const PAGE=15;
+
+async function loadAll() {
+  loadStart();
+  try {
+    const [ins, forn, prod] = await Promise.all([
+      supa('insumos?select=*&order=nome.asc'),
+      supa('fornecedores?select=id_fornecedor,nome&order=nome.asc'),
+      supa('produtos?select=id_produto,nome,id_insumo'),
+    ]);
+    allData = ins || []; fornecedores = forn || []; produtos = prod || [];
+    filtered = [...allData];
+    applySort();
+    render();
+  } catch(e) { toast('Erro: ' + e.message, true); document.getElementById('data-list').innerHTML = `<div class="empty-state">Erro: ${e.message}</div>`; }
+  loadDone();
+}
+
+function setSort(col) {
+  if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortCol = col; sortDir = 'asc'; }
+  syncSortBar(); applySort(); render();
+}
+function setSortFromBar() { sortCol = document.getElementById('sortSelect').value; applySort(); render(); }
+function toggleSortDir() { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; document.getElementById('sortDirBtn').textContent = sortDir === 'asc' ? '↑' : '↓'; applySort(); render(); }
+function syncSortBar() {
+  const sel = document.getElementById('sortSelect'); if (sel) sel.value = sortCol;
+  const b = document.getElementById('sortDirBtn'); if (b) b.textContent = sortDir === 'asc' ? '↑' : '↓';
+}
+function applySort() {
+  const dir = sortDir === 'asc' ? 1 : -1;
+  filtered.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+    if (va < vb) return -1 * dir;
+    if (va > vb) return  1 * dir;
+    return 0;
+  });
+  document.querySelectorAll('.tbl-header .sortable').forEach(el => {
+    const active = el.dataset.col === sortCol;
+    el.classList.toggle('active', active);
+    el.classList.toggle('asc', active && sortDir === 'asc');
+  });
+}
+
+function filterData() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  filtered = q ? allData.filter(x => x.nome.toLowerCase().includes(q)) : [...allData];
+  applySort();
+  currentPage = 1; render();
+}
+
+function render() {
+  const el = document.getElementById('data-list');
+  if (!filtered.length) { el.innerHTML = '<div class="empty-state">Nenhum insumo encontrado.</div>'; document.getElementById('pagination').innerHTML = ''; return; }
+  const start = (currentPage - 1) * PAGE;
+  const page = filtered.slice(start, start + PAGE);
+
+  el.innerHTML = page.map(r => {
+    const isExp = expandedIds.has(r.id_insumo);
+    const prods = produtos.filter(p => p.id_insumo === r.id_insumo);
+    const cached = expandCache[r.id_insumo];
+
+    let expHtml = '';
+    if (isExp) {
+      if (cached === undefined) {
+        expHtml = `<div class="expand-section visible"><div class="empty-state" style="padding:16px">Carregando…</div></div>`;
+        loadExpand(r.id_insumo);
+      } else {
+        expHtml = `<div class="expand-section visible">
+          <div class="expand-grid">
+            <div class="expand-block">
+              <h4>Produtos que usam este insumo (${prods.length})</h4>
+              ${prods.length ? prods.map(p => `<div class="mini-row" style="grid-template-columns:50px 1fr;"><span style="color:var(--text-mid)">#${p.id_produto}</span><span>${p.nome}</span></div>`).join('') : '<div style="font-size:.84rem;color:var(--text-mid);padding:8px 0">Nenhum produto vinculado.</div>'}
+            </div>
+            <div class="expand-block">
+              <h4>Fornecedores (${cached.length})</h4>
+              ${cached.length ? `<div class="mini-row mini-header" style="grid-template-columns:1fr 110px 90px 60px;"><span>Fornecedor</span><span style="text-align:center">ID no Fornec.</span><span style="text-align:center">Preço</span><span style="text-align:center">Qtd</span></div>` + cached.map(f => `<div class="mini-row" style="grid-template-columns:1fr 110px 90px 60px;"><span>${f.fornecedores?.nome || '—'}</span><span style="text-align:center;color:var(--text-mid)">${f.id_produto_fornecedor || '—'}</span><span style="text-align:center">R$ ${fmtMoney(f.preco)}</span><span style="text-align:center">${f.quantidade}</span></div>`).join('') : '<div style="font-size:.84rem;color:var(--text-mid);padding:8px 0">Sem fornecedores.</div>'}
+            </div>
+          </div>
+        </div>`;
+      }
+    }
+
+    return `<div class="order-block">
+      <div class="data-row tbl-insumos">
+        <span class="id-cell" data-label="ID" style="display:flex;align-items:center;gap:6px">
+          <button class="toggle-btn ${isExp ? 'open' : ''}" onclick="toggleExp(${r.id_insumo})">
+            <svg width="12" height="8" viewBox="0 0 12 8"><path d="M1 1l5 5 5-5" stroke="#5C2E28" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          </button>
+          #${r.id_insumo}
+        </span>
+        <span class="left" data-label="Nome">${r.nome}</span>
+        <span data-label="Quantidade">${r.quantidade ?? '—'}</span>
+        <span data-label="Produtos">${prods.length} produto${prods.length !== 1 ? 's' : ''}</span>
+        <span class="row-actions">
+          <button class="btn-icon btn-edit-icon" onclick="openEdit(${r.id_insumo})" title="Editar"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5L11.5 4.5L5 11H3v-2L9.5 2.5Z" stroke="#856404" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
+          <button class="btn-icon btn-del-icon" onclick="openDel(${r.id_insumo})" title="Excluir"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 4h9M5.5 4V2.5h3V4M6 6.5v4M8 6.5v4M3.5 4l.5 8h6l.5-8" stroke="#b71c1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </span>
+      </div>
+      ${expHtml}
+    </div>`;
+  }).join('');
+
+  buildPagination('pagination', currentPage, filtered.length, PAGE, 'goPage');
+}
+
+function goPage(p) { const t = Math.ceil(filtered.length / PAGE); if (p < 1 || p > t) return; currentPage = p; render(); }
+
+async function loadExpand(id) {
+  try {
+    const data = await supa(`insumo_fornecedor?select=*,fornecedores(nome)&id_insumo=eq.${id}`);
+    expandCache[id] = data || []; render();
+  } catch(e) { expandCache[id] = []; render(); }
+}
+
+function toggleExp(id) {
+  if (expandedIds.has(id)) expandedIds.delete(id);
+  else expandedIds.add(id);
+  render();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('visible'); }
+function closeModal(id) { document.getElementById(id).classList.remove('visible'); if (id === 'mainModal') editingId = null; }
+
+function buildFornSelect(selId = '') {
+  return '<option value="">Selecione…</option>' + fornecedores.map(f => `<option value="${f.id_fornecedor}" ${f.id_fornecedor == selId ? 'selected' : ''}>${f.nome}</option>`).join('');
+}
+
+function addFornecRow(f = {}) {
+  const div = document.createElement('div');
+  div.className = 'sub-row';
+  div.style.gridTemplateColumns = '1fr 130px 110px 80px 40px';
+  div.innerHTML = `
+    <select class="f-forn">${buildFornSelect(f.id_fornecedor)}</select>
+    <input type="text" class="f-idprod" placeholder="Ex: SKU-1234" value="${(f.id_produto_fornecedor || '').replace(/"/g,'&quot;')}"/>
+    <input type="number" class="f-preco" placeholder="R$ 0,00" value="${f.preco || ''}" step="0.01" min="0"/>
+    <input type="number" class="f-qty" placeholder="Qtd" value="${f.quantidade || ''}" min="0"/>
+    <button class="btn-remove" onclick="this.parentElement.remove()" title="Remover">✕</button>
+  `;
+  document.getElementById('modal-fornec').appendChild(div);
+}
+
+function openNewModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Novo Insumo';
+  document.getElementById('f-nome').value = '';
+  document.getElementById('f-qtd').value = '';
+  document.getElementById('modal-fornec').innerHTML = '';
+  openModal('mainModal');
+}
+
+async function openEdit(id) {
+  const r = allData.find(x => x.id_insumo === id); if (!r) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Editar Insumo';
+  document.getElementById('f-nome').value = r.nome || '';
+  document.getElementById('f-qtd').value = r.quantidade ?? '';
+  document.getElementById('modal-fornec').innerHTML = '';
+  try {
+    const data = await supa(`insumo_fornecedor?select=*&id_insumo=eq.${id}`);
+    (data || []).forEach(f => addFornecRow(f));
+  } catch(e) {}
+  openModal('mainModal');
+}
+
+function openDel(id) {
+  const r = allData.find(x => x.id_insumo === id); if (!r) return;
+  deletingId = id;
+  document.getElementById('confirmNome').textContent = r.nome;
+  openModal('confirmModal');
+}
+
+async function saveItem() {
+  const nome = document.getElementById('f-nome').value.trim();
+  const quantidade = parseInt(document.getElementById('f-qtd').value) || 0;
+  if (!nome) { toast('Nome obrigatório.', true); return; }
+  const btn = document.getElementById('btnSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  loadStart();
+  try {
+    let insId = editingId;
+    if (editingId) {
+      await supa(`insumos?id_insumo=eq.${editingId}`, { method: 'PATCH', body: JSON.stringify({ nome, quantidade }) });
+    } else {
+      const [r] = await supa('insumos', { method: 'POST', body: JSON.stringify({ nome, quantidade }) });
+      insId = r.id_insumo;
+    }
+    await supa(`insumo_fornecedor?id_insumo=eq.${insId}`, { method: 'DELETE' });
+    const fRows = [...document.querySelectorAll('#modal-fornec .sub-row')].map(d => ({
+      id_insumo: insId,
+      id_fornecedor: parseInt(d.querySelector('.f-forn').value),
+      id_produto_fornecedor: d.querySelector('.f-idprod').value.trim() || null,
+      preco: parseFloat(d.querySelector('.f-preco').value) || 0,
+      quantidade: parseInt(d.querySelector('.f-qty').value) || 0,
+    })).filter(x => x.id_fornecedor);
+    if (fRows.length) await supa('insumo_fornecedor', { method: 'POST', body: JSON.stringify(fRows) });
+    delete expandCache[insId];
+    toast(editingId ? 'Insumo atualizado!' : 'Insumo criado!');
+    closeModal('mainModal'); await loadAll();
+  } catch(e) { toast('Erro: ' + e.message, true); }
+  btn.disabled = false; btn.textContent = 'Salvar Insumo';
+  loadDone();
+}
+
+async function deleteItem() {
+  const btn = document.getElementById('btnDel'); btn.disabled = true; btn.textContent = 'Excluindo…';
+  loadStart();
+  try {
+    await supa(`insumo_fornecedor?id_insumo=eq.${deletingId}`, { method: 'DELETE' });
+    await supa(`insumos?id_insumo=eq.${deletingId}`, { method: 'DELETE' });
+    delete expandCache[deletingId];
+    expandedIds.delete(deletingId);
+    toast('Insumo excluído.'); closeModal('confirmModal'); await loadAll();
+  } catch(e) { toast('Erro: ' + e.message, true); }
+  btn.disabled = false; btn.textContent = 'Excluir';
+  loadDone();
+}
+
+loadAll();
+</script>
+</body>
+</html>
