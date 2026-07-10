@@ -16,6 +16,7 @@
     .col-novo       .kanban-col-dot { background: #6b7db3; }
     .col-a-fazer    .kanban-col-dot { background: #c79c00; }
     .col-fazendo    .kanban-col-dot { background: #1565c0; }
+    .col-bloqueado  .kanban-col-dot { background: #b71c1c; }
     .col-finalizado .kanban-col-dot { background: #2e7d32; }
 
     .kanban-cards { padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1; min-height: 60px; transition: background .15s; }
@@ -102,6 +103,7 @@
           <option value="Novo">Novo</option>
           <option value="A fazer">A fazer</option>
           <option value="Fazendo">Fazendo</option>
+          <option value="Bloqueado">Bloqueado</option>
           <option value="Finalizado">Finalizado</option>
         </select>
       </div>
@@ -149,8 +151,8 @@
 <script>
 if (!requireAuth()) throw new Error("redirect");
 
-const STATUSES = ['Novo', 'A fazer', 'Fazendo', 'Finalizado'];
-const STATUS_CLASS = { 'Novo': 'col-novo', 'A fazer': 'col-a-fazer', 'Fazendo': 'col-fazendo', 'Finalizado': 'col-finalizado' };
+const STATUSES = ['Novo', 'A fazer', 'Fazendo', 'Bloqueado', 'Finalizado'];
+const STATUS_CLASS = { 'Novo': 'col-novo', 'A fazer': 'col-a-fazer', 'Fazendo': 'col-fazendo', 'Bloqueado': 'col-bloqueado', 'Finalizado': 'col-finalizado' };
 const PRIO_LABEL = { baixa: 'Baixa', media: 'Média', alta: 'Alta', urgente: 'Urgente' };
 
 let cards = [], usuarios = [];
