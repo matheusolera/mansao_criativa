@@ -114,6 +114,7 @@ h1.page-title { font-family: var(--font-display); font-size: 3.2rem; font-weight
 .status-select.s-finalizado { background-color: #d4edd4; color: #2e7d32; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232e7d32' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); }
 .status-select.s-pendente   { background-color: #fff3cd; color: #856404; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23856404' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); }
 .status-select.s-cancelado  { background-color: #fde8e8; color: #b71c1c; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23b71c1c' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.status-select.s-a-receber  { background-color: #d9e8f5; color: #1c5d99; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231c5d99' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); }
 
 /* ── EMPTY / LOADING ── */
 .empty-state { text-align: center; padding: 48px 20px; color: var(--text-mid); font-size: .95rem; font-family: var(--font-body); }

@@ -92,6 +92,7 @@
         <label>Status</label>
         <select id="f-status">
           <option value="Pendente">Pendente</option>
+          <option value="A receber">A receber</option>
           <option value="Finalizado">Finalizado</option>
           <option value="Cancelado">Cancelado</option>
         </select>
@@ -278,6 +279,7 @@ function clienteNome(id) {
 function statusKey(s) {
   if (s === 'Finalizado') return 's-finalizado';
   if (s === 'Cancelado') return 's-cancelado';
+  if (s === 'A receber') return 's-a-receber';
   return 's-pendente';
 }
 
@@ -364,6 +366,7 @@ function render() {
         <span class="status-wrap" data-label="Status">
           <select class="status-select ${sk}" onchange="changeStatus(event,${o.id_pedido})">
             <option value="Pendente"   ${o.status === 'Pendente' ? 'selected' : ''}>Pendente</option>
+            <option value="A receber"  ${o.status === 'A receber' ? 'selected' : ''}>A receber</option>
             <option value="Finalizado" ${o.status === 'Finalizado' ? 'selected' : ''}>Finalizado</option>
             <option value="Cancelado"  ${o.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
           </select>

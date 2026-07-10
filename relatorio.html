@@ -87,7 +87,7 @@ async function loadReports() {
     // Status
     const byStatus={};
     pedidos.forEach(p=>{ byStatus[p.status||'N/A']=(byStatus[p.status||'N/A']||0)+1; });
-    const sCols={'Finalizado':'#6aaa6a','Pendente':'#e6c84a','Cancelado':'#d9534f'};
+    const sCols={'Finalizado':'#6aaa6a','A receber':'#4a8fc0','Pendente':'#e6c84a','Cancelado':'#d9534f'};
     new Chart(document.getElementById('chartStatus'),{type:'doughnut',data:{labels:Object.keys(byStatus),datasets:[{data:Object.values(byStatus),backgroundColor:Object.keys(byStatus).map(s=>sCols[s]||'#C0877A'),borderColor:'#F7F0E8',borderWidth:2}]},options:{responsive:true,plugins:{legend:{display:true,position:'bottom',labels:{font:{family:'Bree Serif',size:12},color:'#5C2E28',padding:16}},tooltip:{backgroundColor:'#5C2E28',titleColor:'#F7F0E8',bodyColor:'#F7F0E8'}}}});
 
     // Top produtos
