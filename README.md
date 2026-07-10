@@ -1,4 +1,4 @@
-# Sistema de Gestão — Casa Personalizada
+# Sistema de Gestão — Mansão Criativa
 
 Documentação completa do projeto: arquitetura, lógica de negócio, estrutura de front-end e back-end (Supabase), e instruções de configuração. Este arquivo serve como referência de instrução para o projeto atual.
 
