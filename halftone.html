@@ -202,6 +202,7 @@
           <option value="blueprint">Blueprint</option>
           <option value="riso">Risograph</option>
           <option value="linha">Linha (line screen)</option>
+          <option value="original">Cores originais</option>
         </select>
       </div>
 
@@ -215,9 +216,17 @@
         </select>
       </div>
 
+      <div class="ctrl-group">
+        <label>Cor dos pontos</label>
+        <select id="c-colormode">
+          <option value="solid">Cor única</option>
+          <option value="image">Cores da imagem original</option>
+        </select>
+      </div>
+
       <div class="color-row ctrl-group">
         <div class="color-field"><label>Cor do fundo</label><input type="color" id="c-bg" value="#ffffff"/></div>
-        <div class="color-field"><label>Cor dos pontos</label><input type="color" id="c-dot" value="#1a1a1a"/></div>
+        <div class="color-field" id="dotColorField"><label>Cor única dos pontos</label><input type="color" id="c-dot" value="#1a1a1a"/></div>
       </div>
 
       <div class="slider-row">
@@ -312,6 +321,7 @@ function params() {
     gamma:    +document.getElementById('c-gamma').value,
     angle:    +document.getElementById('c-angle').value * Math.PI / 180,
     invert:   document.getElementById('c-invert').checked,
+    colorMode: document.getElementById('c-colormode').value,
   };
 }
 
@@ -355,7 +365,7 @@ function renderHalftone() {
   ctx.setTransform(1,0,0,1,0,0);
   ctx.fillStyle = p.bg;
   ctx.fillRect(0, 0, imgW, imgH);
-  ctx.fillStyle = p.dot;
+  if (p.colorMode !== 'image') ctx.fillStyle = p.dot;
 
   const cell = p.cell;
   const cos = Math.cos(p.angle), sin = Math.sin(p.angle);
@@ -363,6 +373,8 @@ function renderHalftone() {
   const diag = Math.hypot(imgW, imgH);
   const half = diag / 2 + cell;
   const needRotate = p.shape !== 'circle';
+  const colorImage = p.colorMode === 'image';
+  const sd = srcData.data;
 
   for (let gy = -half; gy <= half; gy += cell) {
     for (let gx = -half; gx <= half; gx += cell) {
@@ -371,14 +383,20 @@ function renderHalftone() {
       const iy = cy + gx * sin + gy * cos;
       if (ix < 0 || ix >= imgW || iy < 0 || iy >= imgH) continue;
 
-      // luminância → tom, com gamma / contraste / inversão
-      let v = lumAt(ix, iy);
+      // amostra o pixel da imagem original (tom + cor)
+      const sx = ix < 0 ? 0 : ix >= imgW ? imgW - 1 : ix|0;
+      const sy = iy < 0 ? 0 : iy >= imgH ? imgH - 1 : iy|0;
+      const di = (sy * imgW + sx) * 4;
+      let v = (0.299 * sd[di] + 0.587 * sd[di+1] + 0.114 * sd[di+2]) / 255;
       v = Math.pow(v, p.gamma);
       v = (v - 0.5) * p.contrast + 0.5;
       if (v < 0) v = 0; else if (v > 1) v = 1;
       if (p.invert) v = 1 - v;
       const dark = 1 - v;                 // mais tinta onde é mais escuro
       if (dark <= 0.003) continue;
+
+      // modo "Cores da imagem": cada ponto usa a cor amostrada da original
+      if (colorImage) ctx.fillStyle = `rgb(${sd[di]},${sd[di+1]},${sd[di+2]})`;
 
       const mag = Math.sqrt(dark) * p.scale;
 
@@ -577,9 +595,16 @@ bindRange('c-scale', 'v-scale', v => v + '%');
 bindRange('c-contrast', 'v-contrast', v => v + '%');
 bindRange('c-gamma', 'v-gamma', v => (+v).toFixed(2));
 bindRange('c-angle', 'v-angle', v => v + '°');
-['c-bg','c-dot','c-shape','c-invert'].forEach(id => {
+['c-bg','c-dot','c-shape','c-invert','c-colormode'].forEach(id => {
   document.getElementById(id).addEventListener('input', () => { markCustom(); scheduleRender(); });
 });
+function syncDotColorField() {
+  const img = document.getElementById('c-colormode').value === 'image';
+  document.getElementById('dotColorField').style.opacity = img ? '.4' : '';
+  document.getElementById('c-dot').disabled = img;
+}
+document.getElementById('c-colormode').addEventListener('change', syncDotColorField);
+syncDotColorField();
 
 /* ── PRESETS ── */
 const PRESETS = {
@@ -589,6 +614,7 @@ const PRESETS = {
   blueprint: { shape:'square', cell:8,  scale:110, contrast:110, gamma:1,    angle:0,  invert:true,  bg:'#0d2a4a', dot:'#cfe4ff' },
   riso:      { shape:'circle', cell:9,  scale:115, contrast:110, gamma:1,    angle:30, invert:false, bg:'#f4efe6', dot:'#2e7d6a' },
   linha:     { shape:'line',   cell:6,  scale:120, contrast:120, gamma:1,    angle:45, invert:false, bg:'#ffffff', dot:'#141414' },
+  original:  { shape:'circle', cell:7,  scale:115, contrast:105, gamma:1,    angle:15, invert:false, bg:'#ffffff', dot:'#141414', colorMode:'image' },
 };
 function markCustom() { if (!applyingPreset) document.getElementById('c-preset').value = ''; }
 function applyPreset(key) {
@@ -598,6 +624,8 @@ function applyPreset(key) {
   document.getElementById('c-bg').value = p.bg;
   document.getElementById('c-dot').value = p.dot;
   document.getElementById('c-invert').checked = p.invert;
+  document.getElementById('c-colormode').value = p.colorMode || 'solid';
+  syncDotColorField();
   const setR = (id, val, valId, fmt) => { const el = document.getElementById(id); el.value = val; document.getElementById(valId).textContent = fmt(val); };
   setR('c-cell', p.cell, 'v-cell', v => v + ' px');
   setR('c-scale', p.scale, 'v-scale', v => v + '%');
@@ -617,6 +645,8 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('c-bg').value = DEFAULTS.bg;
   document.getElementById('c-dot').value = DEFAULTS.dot;
   document.getElementById('c-invert').checked = DEFAULTS.invert;
+  document.getElementById('c-colormode').value = 'solid';
+  syncDotColorField();
   const setR = (id, val, valId, fmt) => { const el = document.getElementById(id); el.value = val; document.getElementById(valId).textContent = fmt(val); };
   setR('c-cell', DEFAULTS.cell, 'v-cell', v => v + ' px');
   setR('c-scale', DEFAULTS.scale, 'v-scale', v => v + '%');
