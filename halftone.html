@@ -286,6 +286,7 @@ let sliderPct = 50;
 let splitVertical = false;
 let holding = false;
 let renderPending = false;
+let applyingPreset = false;   // declarado aqui p/ evitar TDZ nas chamadas iniciais de bindRange
 
 /* refs de exibição (4 canvases no DOM) */
 const canvasBase = document.getElementById('canvasBase'); // original (viewer único)
@@ -589,7 +590,6 @@ const PRESETS = {
   riso:      { shape:'circle', cell:9,  scale:115, contrast:110, gamma:1,    angle:30, invert:false, bg:'#f4efe6', dot:'#2e7d6a' },
   linha:     { shape:'line',   cell:6,  scale:120, contrast:120, gamma:1,    angle:45, invert:false, bg:'#ffffff', dot:'#141414' },
 };
-let applyingPreset = false;
 function markCustom() { if (!applyingPreset) document.getElementById('c-preset').value = ''; }
 function applyPreset(key) {
   const p = PRESETS[key]; if (!p) return;
