@@ -285,6 +285,10 @@
           <div class="slabel"><span>Tolerância</span><span class="sval" id="v-bgtol">18%</span></div>
           <input type="range" id="c-bgtol" min="0" max="80" step="1" value="18"/>
         </div>
+        <div class="check-row" style="margin:12px 0 0;">
+          <input type="checkbox" id="c-highlight"/>
+          <label for="c-highlight">Destacar em magenta o que é removido</label>
+        </div>
       </div>
 
       <div class="check-row">
@@ -371,6 +375,7 @@ function params() {
     bgKey:     document.getElementById('c-bgkey').value,
     bgTol:     +document.getElementById('c-bgtol').value,
     transparent: document.getElementById('c-transparent').checked,
+    highlightRemoved: document.getElementById('c-highlight').checked,
   };
 }
 
@@ -415,7 +420,7 @@ function lumAt(x, y) {
 
 /* Itera a grade do halftone UMA vez e chama cb() por ponto.
    Usado pelo canvas (preview ao vivo), pelo SVG e pelo PDF — assim os três batem. */
-function forEachDot(p, cb) {
+function forEachDot(p, cb, cbRemoved) {
   const cell = p.cell;
   const cos = Math.cos(p.angle), sin = Math.sin(p.angle);
   const cx = imgW / 2, cy = imgH / 2;
@@ -435,7 +440,7 @@ function forEachDot(p, cb) {
       const sx = ix|0, sy = iy|0, di = (sy * imgW + sx) * 4;
       if (p.removeBg) {
         const dr = sd[di] - kr, dg = sd[di+1] - kg, db = sd[di+2] - kb;
-        if (dr*dr + dg*dg + db*db <= tol2) continue;   // é fundo → deixa vazio
+        if (dr*dr + dg*dg + db*db <= tol2) { if (cbRemoved) cbRemoved(ix, iy); continue; }   // é fundo → deixa vazio
       }
       let v = (0.299 * sd[di] + 0.587 * sd[di+1] + 0.114 * sd[di+2]) / 255;
       v = Math.pow(v, p.gamma);
@@ -455,6 +460,12 @@ function forEachDot(p, cb) {
 function paintDots(ctx, p) {
   const cell = p.cell, needRotate = p.shape !== 'circle';
   if (p.colorMode !== 'image') ctx.fillStyle = p.dot;
+  const onRemoved = p.highlightRemoved ? (ix, iy) => {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,0,190,0.85)';
+    ctx.fillRect(ix - cell/2, iy - cell/2, cell, cell);
+    ctx.restore();
+  } : null;
   forEachDot(p, (ix, iy, mag, dark, color) => {
     if (color) ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
     if (!needRotate) {
@@ -472,7 +483,7 @@ function paintDots(ctx, p) {
       else { ctx.rotate(p.angle); const len = cell * 1.15; const th = Math.min(cell, cell * dark * p.scale * 1.15); ctx.fillRect(-len/2, -th/2, len, th); }
       ctx.restore();
     }
-  });
+  }, onRemoved);
 }
 
 function renderHalftone() {
@@ -494,7 +505,7 @@ function exportPNG(p) {
   const c = document.createElement('canvas'); c.width = imgW; c.height = imgH;
   const ctx = c.getContext('2d');
   if (!p.transparent) { ctx.fillStyle = p.bg; ctx.fillRect(0, 0, imgW, imgH); }
-  paintDots(ctx, p);
+  paintDots(ctx, { ...p, highlightRemoved: false });
   return c.toDataURL('image/png');
 }
 
@@ -556,7 +567,8 @@ function buildAndShowSVG() {
 /* Durante a edição mostra o canvas (fluido); ao parar ~150ms troca p/ SVG nítido. */
 function updateHalftoneView() {
   clearTimeout(svgTimer);
-  if (!vectorPreview) { showHalftoneLayer(false); return; }
+  const hi = document.getElementById('c-highlight').checked;
+  if (!vectorPreview || hi) { showHalftoneLayer(false); return; }   // diagnóstico só no canvas
   showHalftoneLayer(false);
   svgTimer = setTimeout(buildAndShowSVG, 150);
 }
@@ -766,6 +778,7 @@ function syncRemoveBg() {
 }
 document.getElementById('c-removebg').addEventListener('change', syncRemoveBg);
 syncRemoveBg();
+document.getElementById('c-highlight').addEventListener('change', scheduleRender);
 
 /* Campos de HEX ao lado de cada seletor de cor (sincronizados nos dois sentidos) */
 function refreshHexFields() {
