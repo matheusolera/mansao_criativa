@@ -252,6 +252,10 @@
         <input type="range" id="c-scale" min="30" max="170" step="5" value="100"/>
       </div>
       <div class="slider-row">
+        <div class="slabel"><span>Variação de tamanho por tom</span><span class="sval" id="v-sizevar">1.20</span></div>
+        <input type="range" id="c-sizevar" min="0.4" max="2.6" step="0.05" value="1.2"/>
+      </div>
+      <div class="slider-row">
         <div class="slabel"><span>Contraste</span><span class="sval" id="v-contrast">100%</span></div>
         <input type="range" id="c-contrast" min="0" max="220" step="5" value="100"/>
       </div>
@@ -366,6 +370,7 @@ function params() {
     shape:    document.getElementById('c-shape').value,
     cell:     +document.getElementById('c-cell').value,
     scale:    +document.getElementById('c-scale').value / 100,
+    sizeVar:  +document.getElementById('c-sizevar').value,
     contrast: +document.getElementById('c-contrast').value / 100,
     gamma:    +document.getElementById('c-gamma').value,
     angle:    +document.getElementById('c-angle').value * Math.PI / 180,
@@ -450,7 +455,7 @@ function forEachDot(p, cb, cbRemoved) {
       const dark = 1 - v;
       if (dark <= 0.003) continue;
 
-      const mag = Math.sqrt(dark) * p.scale;
+      const mag = Math.pow(dark, p.sizeVar) * p.scale;
       const color = colorImage ? [sd[di], sd[di+1], sd[di+2]] : null;
       cb(ix, iy, mag, dark, color);
     }
@@ -480,7 +485,7 @@ function paintDots(ctx, p) {
       // quadrado e losango com orientação fixa (independem do ângulo → nomes sempre corretos)
       if (p.shape === 'square')      { const s = cell * mag;        ctx.fillRect(-s/2, -s/2, s, s); }
       else if (p.shape === 'diamond'){ ctx.rotate(Math.PI/4); const s = cell * mag * 0.92; ctx.fillRect(-s/2, -s/2, s, s); }
-      else { ctx.rotate(p.angle); const len = cell * 1.15; const th = Math.min(cell, cell * dark * p.scale * 1.15); ctx.fillRect(-len/2, -th/2, len, th); }
+      else { ctx.rotate(p.angle); const len = cell * 1.15; const th = Math.min(cell, cell * mag * 1.15); ctx.fillRect(-len/2, -th/2, len, th); }
       ctx.restore();
     }
   }, onRemoved);
@@ -528,7 +533,7 @@ function buildDotsMarkup(p) {
       const s = cell * mag * 0.92;
       dots.push(`<rect x="${R2(ix-s/2)}" y="${R2(iy-s/2)}" width="${R2(s)}" height="${R2(s)}" transform="rotate(45 ${R2(ix)} ${R2(iy)})"${fa}/>`);
     } else {
-      const len = cell * 1.15, th = Math.min(cell, cell * dark * p.scale * 1.15);
+      const len = cell * 1.15, th = Math.min(cell, cell * mag * 1.15);
       dots.push(`<rect x="${R2(ix-len/2)}" y="${R2(iy-th/2)}" width="${R2(len)}" height="${R2(th)}" transform="rotate(${R2(deg)} ${R2(ix)} ${R2(iy)})"${fa}/>`);
     }
   });
@@ -757,6 +762,7 @@ const bindRange = (id, valId, fmt) => {
 };
 bindRange('c-cell', 'v-cell', v => v + ' px');
 bindRange('c-scale', 'v-scale', v => v + '%');
+bindRange('c-sizevar', 'v-sizevar', v => (+v).toFixed(2));
 bindRange('c-contrast', 'v-contrast', v => v + '%');
 bindRange('c-gamma', 'v-gamma', v => (+v).toFixed(2));
 bindRange('c-angle', 'v-angle', v => v + '°');
@@ -840,7 +846,7 @@ function applyPreset(key) {
 }
 document.getElementById('c-preset').addEventListener('change', e => { if (e.target.value) applyPreset(e.target.value); });
 
-const DEFAULTS = { shape:'circle', cell:8, scale:100, contrast:100, gamma:1, angle:45, invert:false, bg:'#ffffff', dot:'#1a1a1a' };
+const DEFAULTS = { shape:'circle', cell:8, scale:100, sizeVar:1.2, contrast:100, gamma:1, angle:45, invert:false, bg:'#ffffff', dot:'#1a1a1a' };
 document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('c-preset').value = '';
   applyingPreset = true;
@@ -853,6 +859,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   const setR = (id, val, valId, fmt) => { const el = document.getElementById(id); el.value = val; document.getElementById(valId).textContent = fmt(val); };
   setR('c-cell', DEFAULTS.cell, 'v-cell', v => v + ' px');
   setR('c-scale', DEFAULTS.scale, 'v-scale', v => v + '%');
+  setR('c-sizevar', DEFAULTS.sizeVar, 'v-sizevar', v => (+v).toFixed(2));
   setR('c-contrast', DEFAULTS.contrast, 'v-contrast', v => v + '%');
   setR('c-gamma', DEFAULTS.gamma, 'v-gamma', v => (+v).toFixed(2));
   setR('c-angle', DEFAULTS.angle, 'v-angle', v => v + '°');
@@ -935,7 +942,7 @@ function buildPDFBlob(p) {
       let ang, w, h;
       if (p.shape === 'square')       { ang = 0;            w = cell * mag;        h = w; }
       else if (p.shape === 'diamond') { ang = Math.PI/4;    w = cell * mag * 0.92; h = w; }
-      else { ang = p.angle; w = cell * 1.15; h = Math.min(cell, cell * dark * p.scale * 1.15); }
+      else { ang = p.angle; w = cell * 1.15; h = Math.min(cell, cell * mag * 1.15); }
       const t = -ang;                      // no espaço espelhado, o giro inverte o sinal
       const cA = Math.cos(t), sA = Math.sin(t), hw = w/2, hh = h/2;
       const corner = (dx, dy) => `${nf(ix + dx*cA - dy*sA)} ${nf(Y + dx*sA + dy*cA)}`;
