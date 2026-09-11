@@ -401,6 +401,15 @@ function setSource(bitmap, w, h) {
   srcCtx.drawImage(bitmap, 0, 0, imgW, imgH);
   srcData = srcCtx.getImageData(0, 0, imgW, imgH);
 
+  // detecta se a imagem já vem com transparência → ativa "Fundo transparente"
+  let hasAlpha = false;
+  const d = srcData.data;
+  for (let i = 3; i < d.length; i += 16) { if (d[i] < 250) { hasAlpha = true; break; } }
+  if (hasAlpha && !document.getElementById('c-transparent').checked) {
+    document.getElementById('c-transparent').checked = true;
+    setTimeout(() => toast('Transparência detectada: fundo transparente ativado.'), 300);
+  }
+
   htCanvas = document.createElement('canvas'); htCanvas.width = imgW; htCanvas.height = imgH;
   htCtx = htCanvas.getContext('2d');
 
@@ -448,6 +457,8 @@ function forEachDot(p, cb, cbRemoved) {
       if (ix < 0 || ix >= imgW || iy < 0 || iy >= imgH) continue;
 
       const sx = ix|0, sy = iy|0, di = (sy * imgW + sx) * 4;
+      const a = sd[di + 3];
+      if (a < 8) continue;   // imagem já recortada: pixel transparente → sem ponto
 
       // cov = "cobertura" 0..1 → 0 significa cor do fundo (sem ponto)
       let cov;
@@ -468,7 +479,7 @@ function forEachDot(p, cb, cbRemoved) {
       if (p.invert) cov = 1 - cov;
       if (cov <= 0.003) continue;
 
-      const mag = Math.pow(cov, p.sizeVar) * p.scale;
+      const mag = Math.pow(cov, p.sizeVar) * p.scale * (a < 255 ? a / 255 : 1);
       const color = colorImage ? [sd[di], sd[di+1], sd[di+2]] : null;
       cb(ix, iy, mag, cov, color);
     }
