@@ -102,7 +102,9 @@
     .ctrl-actions .btn { width: 100%; justify-content: center; }
     .stage svg { display: block; }
     .dl-row { display: flex; gap: 8px; }
-    .dl-row .btn { flex: 1; width: auto; padding: 9px 6px; }
+    .dl-row .btn { width: auto; padding: 9px 16px; flex-shrink: 0; }
+    .dl-row select { flex: 1; min-width: 0; background: var(--inner-bg); border: 1.5px solid var(--card-border); border-radius: 10px; padding: 9px 10px; font-family: var(--font-body); font-size: .86rem; color: var(--text-dark); outline: none; }
+    .dl-row select:focus { border-color: var(--accent); }
     .file-hidden { display: none; }
 
     .busy-pill { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6; background: rgba(92,46,40,.8); color: #fff; font-family: var(--font-body); font-size: .74rem; padding: 4px 14px; border-radius: 50px; opacity: 0; transition: opacity .15s; pointer-events: none; }
@@ -312,9 +314,12 @@
           <input type="file" id="c-file" accept="image/*" class="file-hidden"/>
         </label>
         <div class="dl-row">
-          <button class="btn" id="dlPng" title="Imagem rasterizada">PNG</button>
-          <button class="btn" id="dlSvg" title="Vetorial (escalável)">SVG</button>
-          <button class="btn" id="dlPdf" title="PDF vetorial">PDF</button>
+          <select id="dlFormat" title="Formato do arquivo">
+            <option value="png">PNG (imagem)</option>
+            <option value="svg">SVG (vetor)</option>
+            <option value="pdf">PDF (vetor)</option>
+          </select>
+          <button class="btn" id="dlBtn">Baixar</button>
         </div>
         <button class="btn btn-secondary" id="resetBtn">Restaurar padrões</button>
       </div>
@@ -433,8 +438,8 @@ function forEachDot(p, cb, cbRemoved) {
   const half = diag / 2 + cell;
   const colorImage = p.colorMode === 'image';
   const sd = srcData.data;
-  let kr = 0, kg = 0, kb = 0, tol2 = 0;
-  if (p.removeBg) { [kr, kg, kb] = hexToRgb(p.bgKey); const t = (p.bgTol / 100) * 441.673; tol2 = t * t; }
+  let kr = 0, kg = 0, kb = 0, tolFrac = 0;
+  if (p.removeBg) { [kr, kg, kb] = hexToRgb(p.bgKey); tolFrac = p.bgTol / 100; }
 
   for (let gy = -half; gy <= half; gy += cell) {
     for (let gx = -half; gx <= half; gx += cell) {
@@ -443,21 +448,29 @@ function forEachDot(p, cb, cbRemoved) {
       if (ix < 0 || ix >= imgW || iy < 0 || iy >= imgH) continue;
 
       const sx = ix|0, sy = iy|0, di = (sy * imgW + sx) * 4;
-      if (p.removeBg) {
-        const dr = sd[di] - kr, dg = sd[di+1] - kg, db = sd[di+2] - kb;
-        if (dr*dr + dg*dg + db*db <= tol2) { if (cbRemoved) cbRemoved(ix, iy); continue; }   // é fundo → deixa vazio
-      }
-      let v = (0.299 * sd[di] + 0.587 * sd[di+1] + 0.114 * sd[di+2]) / 255;
-      v = Math.pow(v, p.gamma);
-      v = (v - 0.5) * p.contrast + 0.5;
-      if (v < 0) v = 0; else if (v > 1) v = 1;
-      if (p.invert) v = 1 - v;
-      const dark = 1 - v;
-      if (dark <= 0.003) continue;
 
-      const mag = Math.pow(dark, p.sizeVar) * p.scale;
+      // cov = "cobertura" 0..1 → 0 significa cor do fundo (sem ponto)
+      let cov;
+      if (p.removeBg) {
+        // tamanho guiado pela DISTÂNCIA de cor até a cor escolhida:
+        // igual ao fundo → zero pontos; quanto mais distante, maiores os pontos.
+        const dr = sd[di] - kr, dg = sd[di+1] - kg, db = sd[di+2] - kb;
+        const dist = Math.sqrt(dr*dr + dg*dg + db*db) / 441.673;   // 0..1
+        if (dist <= tolFrac) { if (cbRemoved) cbRemoved(ix, iy); continue; }   // é fundo → vazio
+        cov = (dist - tolFrac) / (1 - tolFrac || 1);               // ramp começando do zero
+      } else {
+        // comportamento tonal clássico (claro = sem ponto)
+        cov = 1 - (0.299 * sd[di] + 0.587 * sd[di+1] + 0.114 * sd[di+2]) / 255;
+      }
+      cov = Math.pow(cov, p.gamma);
+      cov = (cov - 0.5) * p.contrast + 0.5;
+      if (cov < 0) cov = 0; else if (cov > 1) cov = 1;
+      if (p.invert) cov = 1 - cov;
+      if (cov <= 0.003) continue;
+
+      const mag = Math.pow(cov, p.sizeVar) * p.scale;
       const color = colorImage ? [sd[di], sd[di+1], sd[di+2]] : null;
-      cb(ix, iy, mag, dark, color);
+      cb(ix, iy, mag, cov, color);
     }
   }
 }
@@ -892,23 +905,20 @@ function triggerDownload(blobOrUrl, filename) {
   if (typeof blobOrUrl !== 'string') setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
-document.getElementById('dlPng').addEventListener('click', () => {
+document.getElementById('dlBtn').addEventListener('click', () => {
   if (!srcData) return;
-  triggerDownload(exportPNG(params()), 'halftone.png');
-  toast('PNG exportado.');
-});
-
-document.getElementById('dlSvg').addEventListener('click', () => {
-  if (!srcData) return;
-  const blob = new Blob([buildSVGDoc(params())], { type: 'image/svg+xml' });
-  triggerDownload(blob, 'halftone.svg');
-  toast('SVG vetorial exportado.');
-});
-
-document.getElementById('dlPdf').addEventListener('click', () => {
-  if (!srcData) return;
-  triggerDownload(buildPDFBlob(params()), 'halftone.pdf');
-  toast('PDF vetorial exportado.');
+  const fmt = document.getElementById('dlFormat').value;
+  const p = params();
+  if (fmt === 'png') {
+    triggerDownload(exportPNG(p), 'halftone.png');
+    toast('PNG exportado.');
+  } else if (fmt === 'svg') {
+    triggerDownload(new Blob([buildSVGDoc(p)], { type: 'image/svg+xml' }), 'halftone.svg');
+    toast('SVG vetorial exportado.');
+  } else {
+    triggerDownload(buildPDFBlob(p), 'halftone.pdf');
+    toast('PDF vetorial exportado.');
+  }
 });
 
 /* Gera um PDF vetorial de uma página (sem bibliotecas externas).
