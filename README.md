@@ -205,7 +205,7 @@ usuarios (espelha auth.users) ──< kanban_cards (tarefas do Kanban)
 | forma_pagamento | varchar | |
 | data_pedido | date | data em que o pedido foi feito |
 | data_recebimento | date | **data em que o pagamento foi recebido** (base do faturamento — regime de caixa) |
-| status | varchar | `Pendente`, `Finalizado` ou `Cancelado` |
+| status | varchar | `Pendente`, `A receber`, `Finalizado` ou `Cancelado` (ver 5.2) |
 | id_cliente | int8 FK → clientes | |
 
 #### `produto_pedido` (itens de um pedido)
@@ -488,6 +488,11 @@ O faturamento do balanço considera apenas pedidos com `status = 'Finalizado'`, 
 - Pedidos finalizados **sem `data_recebimento`** preenchida são **ignorados** até a data ser informada.
 - Query: `pedidos?select=...&status=eq.Finalizado&data_recebimento=gte.{inicio}&data_recebimento=lte.{fim}`
 
+**Fluxo de status do pedido:** `Pendente` → `A receber` → `Finalizado` (e `Cancelado` a qualquer momento).
+
+- **`A receber`**: pedido já **entregue**, aguardando o pagamento. Como o sistema é regime de caixa, **não** entra no faturamento — a receita só é reconhecida quando o status vira `Finalizado` e a `data_recebimento` é preenchida. Assim, "A receber" fica naturalmente fora do balanço, sem lógica extra.
+- A coluna `status` é `varchar` livre (sem enum/CHECK no banco), então o valor `A receber` funciona sem migração. Ele aparece nos seletores da tela de Pedidos (modal e linha) com selo próprio (classe `.status-select.s-a-receber` no `style.css`) e cor dedicada no gráfico "Pedidos por Status" do Relatório.
+
 ### 5.3 CPV (Custo dos Produtos Vendidos)
 
 ```
@@ -629,7 +634,7 @@ Tratamento de erros embutido: `401` limpa a sessão e redireciona ao login; dema
 ## 8. Fluxo Operacional Mensal (recomendado)
 
 1. **Início do mês:** em **Financeiro**, selecionar o mês e definir a taxa de reinvestimento, faturamento base e custos (fixos em R$, variáveis em %).
-2. **Durante o mês:** cadastrar **pedidos** (marcar `Finalizado` e preencher a `data_recebimento` quando o pagamento entrar) e registrar **compras** conforme acontecem.
+2. **Durante o mês:** cadastrar **pedidos** (usar `A receber` quando o item for entregue mas o pagamento ainda não entrou; ao receber, mudar para `Finalizado` e preencher a `data_recebimento`) e registrar **compras** conforme acontecem.
 3. **Aportes:** se entrar dinheiro de fora ou quiser reinvestir lucro, usar "Adicionar fundos" no Balanço.
 4. **Mês seguinte:** o **Balanço** mostra o orçamento de compras já calculado a partir do mês anterior, com o saldo acumulado correto.
 
@@ -639,7 +644,7 @@ Tratamento de erros embutido: `401` limpa a sessão e redireciona ao login; dema
 
 ## 9. Pontos de Atenção / Manutenção
 
-- **`renderUserBar()`**: função do `shared.js` que monta a barra de usuário/logout na sidebar. Deve ser chamada apenas em páginas cuja estrutura suporta. Chamadas órfãs (sem o elemento esperado) já causaram quebra no carregamento — garantir consistência entre `shared.js` e as páginas.
+- **Sem barra de usuário/logout na UI**: o `shared.js` expõe `logout()`, mas **nenhuma página tem botão que o chame** e não existe barra de usuário na sidebar (versões antigas do README mencionavam uma função `renderUserBar()` que **não existe mais** no código). Para encerrar a sessão hoje, feche a aba (a sessão fica em `sessionStorage`) ou chame `logout()` manualmente. Se quiser um botão de sair, basta ligá-lo a `logout()`.
 - **`login.html` duplicado**: remover, mantendo apenas `index.html` como tela de login.
 - **Estoque manual**: comprar insumos **não** atualiza `insumos.quantidade` automaticamente — o ajuste é manual.
 - **Ambiente de desenvolvimento isolado**: o Supabase só responde a partir do navegador do usuário (o ambiente de geração de código não tem acesso à rede do projeto). Testes de integração devem ser feitos no navegador.
